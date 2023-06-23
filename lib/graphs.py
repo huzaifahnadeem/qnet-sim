@@ -114,7 +114,7 @@ class QONgraph:
         rand_a = self.config.fixed_params.c_u_v.random_start
         rand_b = self.config.fixed_params.c_u_v.random_stop
         for e in nx.edges(self._nx_graph):
-            unif_random_value = self.common_random.uniform(rand_a, rand_b)
+            unif_random_value = int(self.common_random.uniform(rand_a, rand_b))
             capacities[e] = unif_random_value
         nx.set_edge_attributes(self._nx_graph, capacities, name='capacity')
 
@@ -124,7 +124,7 @@ class QONgraph:
         self.config = importlib.import_module(config_filename, package=None)
         self.common_random = CommonRandom(self.config.random_params.seed)
         self._nx_graph = self._import_graph()
-        self._highlighted_nodes = [] # = ['NYCMng'] # test # TEMP TODO. do i need this?
+        self._highlighted_nodes = ['NYCMng'] # test # TEMP TODO. do i need this?
         self._initialize_link_capacities()
 
     def save_graph(self, filename="graph.png"):
@@ -134,23 +134,28 @@ class QONgraph:
         self._draw_graph(action='show')
     
     def _draw_graph(self, action=None, filename="graph.png"):
-        color_map = [self.config.graph.highlight_color if node_name in self._highlighted_nodes else self.config.graph.node_color for node_name in list(self._nx_graph.nodes)]
+        pos = nx.spring_layout(self._nx_graph, seed=0) # arbitrary seed value here
         
-        # pos = nx.spring_layout(self._nx_graph, seed=7) # arbitrary seed value here
-        # # nodes:
-        # nx.draw_networkx_nodes(self._nx_graph, pos, node_size=700)
-        # # edges:
-        # nx.draw_networkx_edges(self._nx_graph, pos, width=6, alpha=0.5, edge_color="b", style="dashed")
-        # # node labels:
-        # nx.draw_networkx_labels(self._nx_graph, pos, font_size=20, font_family="sans-serif")
-        # # edge labels:
-        edge_labels = nx.get_edge_attributes(self._nx_graph, "capacity")
-        # nx.draw_networkx_edge_labels(self._nx_graph, pos,  edge_labels)
+        # node colors:
+        color_map = [self.config.graph.highlight_color if node_name in self._highlighted_nodes else self.config.graph.node_color for node_name in list(self._nx_graph.nodes)]
 
-        nx.draw_networkx(self._nx_graph, node_color=color_map, with_labels = True)
+        # edge labels:
+        edge_capacities = nx.get_edge_attributes(self._nx_graph, "capacity")
+
+        # nx.draw_networkx(
+        #     G = self._nx_graph, 
+        #     node_color = color_map, 
+        #     with_labels = True,
+        #     edge_labels = edge_capacities
+        #     )
+
+        nx.draw(self._nx_graph, pos)
+        nx.draw_networkx_nodes(self._nx_graph, pos, node_color = color_map, node_size = 500)
+        nx.draw_networkx_labels(self._nx_graph, pos)
+        nx.draw_networkx_edge_labels(self._nx_graph, pos, edge_labels = edge_capacities)
 
         if action == 'save':
-            plt.savefig(filename, format="PNG")
+            plt.savefig(filename, format = "PNG")
         if action == 'show':
             plt.show()
     
