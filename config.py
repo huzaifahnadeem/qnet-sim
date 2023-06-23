@@ -11,8 +11,8 @@ class graph:
     # name = 'G(50,0.1)'
     # name = 'G(50,0.05)'
 
-    node_color = 'blue'
-    highlight_color = 'red'
+    node_color = 'white'
+    storage_node_color = 'black'
 
 class storage_servers:
     # selection_scheme = 'RANDOM'

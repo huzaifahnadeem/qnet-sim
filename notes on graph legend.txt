@@ -1,0 +1,4 @@
+- all nodes white circles with black node name by default
+- if node is a storage node, gray node. with red outer edge of node. is also a triangle like ^
+- user pairs have same color. are square. and have (#) user pair number in parenthesis after node name
+- above should be configurable in config ig?

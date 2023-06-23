@@ -118,14 +118,69 @@ class QONgraph:
             capacities[e] = unif_random_value
         nx.set_edge_attributes(self._nx_graph, capacities, name='capacity')
 
+    # def _initialize_node_colors(self):
+    #     # set all node colors to the color specified in config:
+    #     default_color = self.config.graph.node_color
+    #     storage_node_color = self.config.graph.storage_node_color
+    #     colors = {}
+    #     node_types = nx.get_node_attributes(self._nx_graph, 'type')
+    #     for node in self._nx_graph:
+    #         if node_types[node] == 'storage':
+    #             colors[node] = storage_node_color
+    #         else:
+    #             colors[node] = default_color
+    #     nx.set_node_attributes(self._nx_graph, colors, name='color')
+
+    def _initialize_node_types(self):
+        node_type = {}
+        storage_nodes_list = self._get_storage_nodes()
+        user_pairs_list = self._get_user_pairs()
+        all_users = list(map(list, zip(*user_pairs_list)))
+        for node in self._nx_graph:
+            if node in storage_nodes_list and node in all_users:
+                pass # TODO
+            elif node in storage_nodes_list:
+                node_type[node] = 'storage' # mark as a storage node
+            elif node in all_users[0] + all_users[1]:
+                node_type[node] = 'up'
+            else: 
+                node_type[node] = None # just a regular node; nothing special about it
+        nx.set_node_attributes(self._nx_graph, node_type, name='type')
+        self._set_user_pair_ids(all_users[0], all_users[1])
+
+    def _initialize_graph(self):
+        self._initialize_node_types() # sets 'type' attribute of nodes to None or 'storage'
+        # self._initialize_node_colors() # colors represent user pairs. user pairs also marked by a number in parenthesis next to node name #TODO
+        self._initialize_link_capacities()
+    
+    def _get_storage_nodes(self):
+        return ['NYCMng'] # placeholder. TODO: fix
+    
+    def _get_user_pairs(self):
+        return [('ATLA-M5', 'WASHng'), ('LOSAng', 'KSCYng'), ('STTLng', 'CHINng')] # placeholder. TODO: fix
+
+    def _set_user_pair_ids(self, user_pairs_list_a, user_pairs_list_b):
+        ids = {}
+        all_users = user_pairs_list_a + user_pairs_list_a
+        non_users_list = list(set(list(self._nx_graph.nodes)) - set(all_users))
+        for non_user in non_users_list:
+            ids[non_user] = None
+        for user in all_users:
+            try:
+                ind = user_pairs_list_a.index(user)
+            except ValueError:
+                ind = user_pairs_list_b.index(user)
+            this_id = ind + 1
+            ids[user] = this_id
+        nx.set_node_attributes(self._nx_graph, ids, name='user pair id')
+
     ### public methods:
 
     def __init__(self, config_filename) -> None:
         self.config = importlib.import_module(config_filename, package=None)
         self.common_random = CommonRandom(self.config.random_params.seed)
         self._nx_graph = self._import_graph()
-        self._highlighted_nodes = ['NYCMng'] # test # TEMP TODO. do i need this?
-        self._initialize_link_capacities()
+        self._initialize_graph()
 
     def save_graph(self, filename="graph.png"):
         self._draw_graph(action='save', filename=filename)
@@ -134,25 +189,48 @@ class QONgraph:
         self._draw_graph(action='show')
     
     def _draw_graph(self, action=None, filename="graph.png"):
-        pos = nx.spring_layout(self._nx_graph, seed=0) # arbitrary seed value here
+        pos = nx.spring_layout(self._nx_graph, seed=0) 
         
-        # node colors:
-        color_map = [self.config.graph.highlight_color if node_name in self._highlighted_nodes else self.config.graph.node_color for node_name in list(self._nx_graph.nodes)]
-
+        # # node colors:
+        # colors = nx.get_node_attributes(self._nx_graph, "color")
+        
         # edge labels:
         edge_capacities = nx.get_edge_attributes(self._nx_graph, "capacity")
 
-        # nx.draw_networkx(
-        #     G = self._nx_graph, 
-        #     node_color = color_map, 
-        #     with_labels = True,
-        #     edge_labels = edge_capacities
-        #     )
-
-        nx.draw(self._nx_graph, pos)
-        nx.draw_networkx_nodes(self._nx_graph, pos, node_color = color_map, node_size = 500)
+        # draw graph:
+        # draw storage nodes:
+        nx.draw_networkx_nodes(
+            self._nx_graph, 
+            pos, 
+            nodelist=[n for (n, ddict) in self._nx_graph.nodes(data=True) if ddict["type"] == 'storage'], 
+            node_color = 'gray', 
+            node_size = 700,
+            node_shape='^'
+            ).set_edgecolor('red')
+        # draw user pair nodes: 
+        nx.draw_networkx_nodes(
+            self._nx_graph, 
+            pos, 
+            nodelist=[n for (n, ddict) in self._nx_graph.nodes(data=True) if ddict["type"] == 'up'], 
+            node_color = 'blue', 
+            node_size = 700,
+            node_shape='s'
+            ).set_edgecolor('red')
+        # draw rest of the nodes:
+        nx.draw_networkx_nodes(
+            self._nx_graph, 
+            pos, 
+            nodelist=[n for (n, ddict) in self._nx_graph.nodes(data=True) if ddict["type"] not in ['storage', 'up']], 
+            node_color = 'white', 
+            node_size = 600,
+            node_shape = 'o'
+            ).set_edgecolor('black')
+        # all nodes' labels
         nx.draw_networkx_labels(self._nx_graph, pos)
-        nx.draw_networkx_edge_labels(self._nx_graph, pos, edge_labels = edge_capacities)
+        # draw all edges:
+        nx.draw_networkx_edges(self._nx_graph, pos, arrowsize = 20)
+        # edge labels (capacities):
+        # nx.draw_networkx_edge_labels(self._nx_graph, pos, edge_labels = edge_capacities)
 
         if action == 'save':
             plt.savefig(filename, format = "PNG")
