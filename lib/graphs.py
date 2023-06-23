@@ -161,7 +161,7 @@ class QONgraph:
 
     def _set_user_pair_ids(self, user_pairs_list_a, user_pairs_list_b):
         ids = {}
-        all_users = user_pairs_list_a + user_pairs_list_a
+        all_users = user_pairs_list_a + user_pairs_list_b
         non_users_list = list(set(list(self._nx_graph.nodes)) - set(all_users))
         for non_user in non_users_list:
             ids[non_user] = None
@@ -172,7 +172,7 @@ class QONgraph:
                 ind = user_pairs_list_b.index(user)
             this_id = ind + 1
             ids[user] = this_id
-        nx.set_node_attributes(self._nx_graph, ids, name='user pair id')
+        nx.set_node_attributes(self._nx_graph, ids, name='up_id')
 
     ### public methods:
 
@@ -193,6 +193,8 @@ class QONgraph:
         
         # # node colors:
         # colors = nx.get_node_attributes(self._nx_graph, "color")
+        # temp: colors for user pair ids
+        colors = ['', 'cyan', 'green', 'yellow', 'pink', 'red']
         
         # edge labels:
         edge_capacities = nx.get_edge_attributes(self._nx_graph, "capacity")
@@ -212,7 +214,7 @@ class QONgraph:
             self._nx_graph, 
             pos, 
             nodelist=[n for (n, ddict) in self._nx_graph.nodes(data=True) if ddict["type"] == 'up'], 
-            node_color = 'blue', 
+            node_color = [colors[ddict['up_id']] for (n, ddict) in self._nx_graph.nodes(data=True) if ddict["type"] == 'up'], 
             node_size = 700,
             node_shape='s'
             ).set_edgecolor('red')
