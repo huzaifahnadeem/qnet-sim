@@ -112,15 +112,27 @@ class QONgraph:
 
         return nx_graph
 
-    def _initialize_link_capacities(self):
-        # link capacities are represented by the internal nx_graph's weights
-        capacities = {}
-        rand_a = self.workload.fixed_params.c_u_v.random_start
-        rand_b = self.workload.fixed_params.c_u_v.random_stop
+    def _link_capacity_fidelity_common(self, attribute_name):
+        # link capacities and fidelities are saved by the internal nx_graph's nodes' 'capacity' and 'fidelity' attributes, respectively
+
+        from_workload = {
+            'capacity': {
+                'start': self.workload.fixed_params.c_u_v.random_start,
+                'stop': self.workload.fixed_params.c_u_v.random_stop,
+            },
+            'fidelity': {
+                'start': self.workload.fixed_params.link_fidelity.random_start,
+                'stop': self.workload.fixed_params.link_fidelity.random_stop,
+            },
+        }
+
+        values = {}
+        rand_a = from_workload[attribute_name]['start']
+        rand_b = from_workload[attribute_name]['stop']
         for e in nx.edges(self._nx_graph):
-            unif_random_value = int(self.common_random.uniform(rand_a, rand_b))
-            capacities[e] = unif_random_value
-        nx.set_edge_attributes(self._nx_graph, capacities, name='capacity')
+            unif_random_value = self.common_random.uniform(rand_a, rand_b)
+            values[e] = unif_random_value
+        nx.set_edge_attributes(self._nx_graph, values, name=attribute_name)
 
     def _initialize_node_types(self):
         node_type = {}
@@ -162,8 +174,11 @@ class QONgraph:
             ids[user] = this_id
         nx.set_node_attributes(self._nx_graph, ids, name='up_id')
 
+    def _initialize_link_capacities(self):
+        self._link_capacity_fidelity_common('capacity')
+
     def _initialize_link_fidelities(self):
-        pass # TODO
+        self._link_capacity_fidelity_common('fidelity')
 
     def _kk_into_fr(self):
         # TODO: kamaka kawai for initial pos feed into fruchterman reingold ref https://en.wikipedia.org/wiki/Force-directed_graph_drawing#cite_note-fr91-12
@@ -226,9 +241,6 @@ class QONgraph:
         # set up node positions in the graph:
         pos = config.layout.function(self._nx_graph)
 
-        # edge labels:
-        edge_capacities = nx.get_edge_attributes(self._nx_graph, "capacity")
-
         # draw graph:
         # draw user pair nodes: (note: type 'up' = 'user pair') 
         nx.draw_networkx_nodes(
@@ -261,6 +273,7 @@ class QONgraph:
             ).set_edgecolor(config.nodes.other.edge_color)
         
         # all nodes' labels
+        # TODO: display capacity of the storage servers maybe in title or legend from 'self.workload.fixed_params.B_s'
         node_labels = {}
         for (n, ddict) in self._nx_graph.nodes(data = True):
             node_labels[n] = n if ddict["up_id"] is None else n + ' (' + str(ddict["up_id"]) + ')'
@@ -273,8 +286,13 @@ class QONgraph:
         # draw all edges:
         nx.draw_networkx_edges(self._nx_graph, pos, arrowsize = config.edges.arrow_size)
         
-        # edge labels (capacities):
+        # edge labels: # TODO: the following code works fine but graph is too messy. fix that and then print edge labels with both capacity and fidelity neatly
+        # edge_capacities = nx.get_edge_attributes(self._nx_graph, "capacity")
         # nx.draw_networkx_edge_labels(self._nx_graph, pos, edge_labels = edge_capacities)
+        # edge_fidelities = nx.get_edge_attributes(self._nx_graph, "fidelity")
+        # for k in edge_fidelities:
+        #     edge_fidelities[k] = round(edge_fidelities[k], 2)
+        # nx.draw_networkx_edge_labels(self._nx_graph, pos, edge_labels = edge_fidelities)
 
         if action == 'save':
             plt.savefig(filename, format = "PNG")
