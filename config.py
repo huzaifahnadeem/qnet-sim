@@ -14,7 +14,9 @@ class graph:
             'spiral',               # [7]
             'kk --> fr',            # [8] # kamada kawai as inital layout feeded into fruchterman reingold
         ]
-        name = _choices[5] # kamada kawai seems best for our use. fruchterman reingold also seems good
+        # Note: kamada kawai feeding into fruchterman reingold seems the best option. However, both of these have a higher running time so using just kamada kawai layout for now as that seems to be good by itself as well. fruchterman reingold also seems good but not as good as just kamada kawai 
+        name = _choices[5] # = 'kamada kawai'
+        # name = _choices[8] # = 'kk --> fr'
     
     class nodes:
         class user_pair:

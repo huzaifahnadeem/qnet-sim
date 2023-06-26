@@ -180,9 +180,12 @@ class QONgraph:
     def _initialize_link_fidelities(self):
         self._link_capacity_fidelity_common('fidelity')
 
-    def _kk_into_fr(self):
-        # TODO: kamaka kawai for initial pos feed into fruchterman reingold ref https://en.wikipedia.org/wiki/Force-directed_graph_drawing#cite_note-fr91-12
-        raise NameError("'kk --> fr' not implemented yet")
+    def _kk_into_fr(self, G):
+        # kamada kawai layout for initial pos feed into fruchterman reingold. 
+        # ref: https://en.wikipedia.org/wiki/Force-directed_graph_drawing#:~:text=A%20combined%20application%20of%20different%20algorithms%20is%20helpful%20to%20solve%20this%20problem.%5B10%5D%20For%20example%2C%20using%20the%20Kamada%E2%80%93Kawai%20algorithm%5B11%5D%20to%20quickly%20generate%20a%20reasonable%20initial%20layout%20and%20then%20the%20Fruchterman%E2%80%93Reingold%20algorithm%5B12%5D%20to%20improve%20the%20placement%20of%20neighbouring%20nodes.
+        inital_pos = nx.kamada_kawai_layout(G)
+        final_pos = nx.fruchterman_reingold_layout(G, pos = inital_pos)
+        return final_pos
 
     ### public methods:
 
@@ -299,5 +302,3 @@ class QONgraph:
         if action == 'show':
             plt.show()
     
-
-
