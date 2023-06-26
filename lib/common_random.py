@@ -1,3 +1,4 @@
+# this file provides wrapper functions for random library so that wherever random is used through this library, stuff like seed etc remains consistent.
 import importlib
 
 class CommonRandom:
@@ -7,3 +8,9 @@ class CommonRandom:
 
     def uniform(self, a, b):
         return self.randomlib.uniform(a, b)
+    
+    def randint(self, a, b):
+        return self.randomlib.randint(a, b)
+    
+    def choice(self, options):
+        return self.randomlib.choice(options)

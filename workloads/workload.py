@@ -12,14 +12,26 @@ class graph:
     name = _choices[1]
 
 class storage_servers:
-    # selection_scheme = 'RANDOM'
-    selection_scheme = 'DEGREE'
+    _choices = [
+        'manual',   # [0] # for testing
+        'random',   # [1] 
+        'degree',   # [2]
+    ]
+    selection_scheme = _choices[0]
+    # placeholder:
+    manual_storage_servers = ['NYCMng'] # this is only used when selection_scheme = 'manual'. storage servers are specified by node names. This is useful for testing purposes.
 
 class user_pairs:
     number = 6 # temp. same value as the QON paper used => presumably because abilene (the smallest graph) can have at most 6 pairs (total 12 nodes)
 
-    # it is unclear how they choose these user pairs in the QON paper so for now going with the only option as randomly choosing the pairs (could potentially add other schemes therefore adding the config variable):
-    selection_scheme = 'RANDOM'
+    # it is unclear how they choose these user pairs in the QON paper so for now going with the only option as randomly choosing the pairs (could potentially add other schemes therefore adding it as:
+    _choices = [
+        'manual',   # [0] # for testing
+        'random',   # [1]
+    ]
+    selection_scheme = _choices[0]
+    # placeholder:
+    manual_user_pairs = [('ATLA-M5', 'WASHng'), ('LOSAng', 'KSCYng'), ('STTLng', 'CHINng'), ('NYCMng', 'ATLAng')] # this is only used when selection_scheme = 'manual'. pairs are specified by tuple of node names. This is useful for testing purposes.
 
 class fixed_params: # the parameters that were fixed in Table II in the QON paper
     delta = 20 # Δ = 20 sec = duration of 1 time interval in seconds

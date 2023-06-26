@@ -4,7 +4,7 @@ import importlib
 from lib.common_random import CommonRandom
 
 class QONgraph:
-    ### private methods:
+    ### private methods: # TODO most of the functions are unneccessary for each object. maybe move these to a separate file
 
     def _teaver_graph(self, data_directory):
         # "topology.txt A list of rows containing edges with a source, destination, capacity, and probability of failure."
@@ -108,7 +108,7 @@ class QONgraph:
         elif graph_name == 'PA(50, 3)':
             raise NameError("The graph 'PA(50, 3)' not implemented yet") # TODO
         else:
-            raise NameError("Invalid graph name specified in the configuration file")
+            raise NameError("Invalid graph name specified in the workload file")
 
         return nx_graph
 
@@ -153,11 +153,55 @@ class QONgraph:
         self._initialize_link_capacities()
         self._initialize_link_fidelities()
     
+    def _random_storage_nodes_selection(self):
+        # TODO: no_of_storage_nodes is randomly selected for now. Should this be changed?
+        no_of_storage_nodes = self.common_random.randint(0, self._nx_graph.number_of_nodes())
+        selected_nodes = []
+        for _ in range(no_of_storage_nodes):
+            while True:
+                random_node = self.common_random.choice(list(self._nx_graph.nodes()))
+                if random_node not in selected_nodes:
+                    selected_nodes.append(random_node)
+                    break # break the while loop. Continues to randomly pick another node if picked an already-picked node again
+        return selected_nodes
+
+    def _degree_storage_nodes_selection(self):
+        # TODO: no_of_storage_nodes is randomly selected for now. Should this be changed?
+        no_of_storage_nodes = self.common_random.randint(0, self._nx_graph.number_of_nodes())
+        selected_nodes = []
+        nodes_list = list(self._nx_graph.degree)
+        nodes_list = sorted(nodes_list, key=lambda x: x[1], reverse=True)
+        for _ in range(no_of_storage_nodes):
+            selected_nodes.append(nodes_list[0][0])
+            del nodes_list[0]
+        
+        return selected_nodes
+
     def _get_storage_nodes(self):
-        return ['NYCMng'] # placeholder. TODO: fix
+        selection_scheme = self.workload.storage_servers.selection_scheme
+        storage_nodes = []
+        if selection_scheme == 'random':
+            storage_nodes = self._random_storage_nodes_selection()
+        elif selection_scheme == 'degree':
+            storage_nodes = self._degree_storage_nodes_selection()
+        elif selection_scheme == 'manual':
+            storage_nodes = self.workload.storage_servers.manual_storage_servers
+        else:
+            raise NameError("Invalid storage selection scheme in the given workload file.")
+
+        return storage_nodes
     
     def _get_user_pairs(self):
-        return [('ATLA-M5', 'WASHng'), ('LOSAng', 'KSCYng'), ('STTLng', 'CHINng'), ('NYCMng', 'ATLAng')] # placeholder. TODO: fix
+        selection_scheme = self.workload.user_pairs.selection_scheme
+        user_pairs = []
+        if selection_scheme == 'random':
+            raise NameError("TODO")
+        elif selection_scheme == 'manual':
+            user_pairs = self.workload.user_pairs.manual_user_pairs
+        else:
+            raise NameError("Invalid user pairs selection scheme in the given workload file.")
+
+        return user_pairs
 
     def _set_user_pair_ids(self, user_pairs_list_a, user_pairs_list_b):
         ids = {}
