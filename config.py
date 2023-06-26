@@ -22,18 +22,18 @@ class graph:
         class user_pair:
             colors = ['cyan', 'green', 'yellow', 'pink', 'red', 'purple', 'blue', 'indigo']
             size = 700
-            shape = 's' # square
-            edge_color = 'green'
+            shape = 'o' # circle
+            edge_color = 'black'
         
         class storage:
             color = 'gray'
-            size = 1000
-            shape = '^' # triangle
+            size = 700
+            shape = 's' # square
             edge_color = 'red'
         
         class other:
             color = 'white'
-            size = 600
+            size = 700
             shape = 'o' # circle
             edge_color = 'black'
     

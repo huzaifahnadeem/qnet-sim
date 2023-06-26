@@ -303,16 +303,6 @@ class QONgraph:
         pos = config.layout.function(self._nx_graph)
 
         # draw graph:
-        # draw user pair nodes: (note: type 'up' = 'user pair') 
-        nx.draw_networkx_nodes(
-            self._nx_graph, 
-            pos, 
-            nodelist = [n for (n, ddict) in self._nx_graph.nodes(data = True) if 'up' in ddict["type"]], 
-            node_color = [config.nodes.up.colors[ddict['up_id']] for (n, ddict) in self._nx_graph.nodes(data = True) if 'up' in ddict["type"]], 
-            node_size = config.nodes.up.size,
-            node_shape = config.nodes.up.shape
-            ).set_edgecolor(config.nodes.up.edge_color)
-        
         # draw storage nodes:
         nx.draw_networkx_nodes(
             self._nx_graph, 
@@ -322,12 +312,22 @@ class QONgraph:
             node_size = config.nodes.storage.size,
             node_shape = config.nodes.storage.shape
             ).set_edgecolor(config.nodes.storage.edge_color)
+        
+        # draw user pair nodes: (note: type 'up' = 'user pair') 
+        nx.draw_networkx_nodes(
+            self._nx_graph, 
+            pos, 
+            nodelist = [n for (n, ddict) in self._nx_graph.nodes(data = True) if 'up' in ddict["type"]], 
+            node_color = [config.nodes.up.colors[ddict['up_id']] for (n, ddict) in self._nx_graph.nodes(data = True) if 'up' in ddict["type"]], 
+            node_size = config.nodes.up.size,
+            node_shape = config.nodes.up.shape
+            ).set_edgecolor(config.nodes.up.edge_color)
 
         # draw rest of the nodes that have no special type:
         nx.draw_networkx_nodes(
             self._nx_graph, 
             pos, 
-            nodelist = [n for (n, ddict) in self._nx_graph.nodes(data = True)], 
+            nodelist = [n for (n, ddict) in self._nx_graph.nodes(data = True) if ddict["type"] == []], 
             node_color = config.nodes.other.color, 
             node_size = config.nodes.other.size,
             node_shape = config.nodes.other.shape
