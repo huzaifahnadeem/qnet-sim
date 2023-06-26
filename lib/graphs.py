@@ -66,14 +66,14 @@ class QONgraph:
     
     def _graph_obj_for_IBM(self):
         ### IBM
-        IBM = self._teaver_graph(f'{self.data_directory.path}/IBM/')
+        IBM = self._teaver_graph(f'{self.config.data_directory.path}/IBM/')
 
         return IBM
     
     def _graph_obj_for_SURFnet(self):
         ### SURFnet
-        # SURFnet = nx.read_gml(f'{config.data_directory.path}/SURFnet/Surfnet.gml')
-        SURFnet = nx.read_graphml(f'{config.data_directory.path}/SURFnet/Surfnet.graphml')
+        # SURFnet = nx.read_gml(f'{self.config.data_directory.path}/SURFnet/Surfnet.gml')
+        SURFnet = nx.read_graphml(f'{self.config.data_directory.path}/SURFnet/Surfnet.graphml')
         
         return SURFnet
     
@@ -337,7 +337,7 @@ class QONgraph:
         # TODO: display capacity of the storage servers maybe in title or legend from 'self.workload.fixed_params.B_s'
         node_labels = {}
         for (n, ddict) in self._nx_graph.nodes(data = True):
-            node_labels[n] = n if ddict["up_id"] is None else n + ' (' + str(ddict["up_id"]) + ')'
+            node_labels[n] = str(n) if ddict["up_id"] is None else str(n) + ' (' + str(ddict["up_id"]) + ')'
         nx.draw_networkx_labels(
             self._nx_graph, 
             pos,

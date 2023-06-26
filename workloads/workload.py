@@ -9,7 +9,7 @@ class graph:
         'PA(50, 2)',    # [6]
         'PA(50, 3)',    # [7]
     ]
-    name = _choices[1]
+    name = _choices[3]
 
 class storage_servers:
     _choices = [
