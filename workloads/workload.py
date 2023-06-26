@@ -17,7 +17,7 @@ class storage_servers:
         'random',   # [1] 
         'degree',   # [2]
     ]
-    selection_scheme = _choices[0]
+    selection_scheme = _choices[1]
     # placeholder:
     manual_storage_servers = ['NYCMng'] # this is only used when selection_scheme = 'manual'. storage servers are specified by node names. This is useful for testing purposes.
 

@@ -355,6 +355,8 @@ class QONgraph:
         #     edge_fidelities[k] = round(edge_fidelities[k], 2)
         # nx.draw_networkx_edge_labels(self._nx_graph, pos, edge_labels = edge_fidelities)
 
+        # TODO: add a legend
+
         if action == 'save':
             plt.savefig(filename, format = "PNG")
         if action == 'show':
