@@ -169,7 +169,7 @@ class QONgraph:
         # TODO: no_of_storage_nodes is randomly selected for now. Should this be changed?
         no_of_storage_nodes = self.common_random.randint(0, self._nx_graph.number_of_nodes())
         selected_nodes = []
-        nodes_list = list(self._nx_graph.degree)
+        nodes_list = list(self._nx_graph.degree) # TODO is this correct?
         nodes_list = sorted(nodes_list, key=lambda x: x[1], reverse=True)
         for _ in range(no_of_storage_nodes):
             selected_nodes.append(nodes_list[0][0])
@@ -192,14 +192,15 @@ class QONgraph:
         return storage_nodes
     
     def _random_user_pairs_selection(self):
+        # note that currently each node can be part of only one pair
         no_of_user_pairs = self.workload.user_pairs.number
+        nodes_list = list(self._nx_graph.nodes())
         selected_pairs = [] # list of tuples
         for _ in range(no_of_user_pairs):
-            user1 = self.common_random.choice(list(self._nx_graph.nodes()))
-            while True:
-                user2 = self.common_random.choice(list(self._nx_graph.nodes()))
-                if user1 != user2:
-                    break
+            user1 = self.common_random.choice(nodes_list)
+            nodes_list.remove(user1)
+            user2 = self.common_random.choice(nodes_list)
+            nodes_list.remove(user2)
             selected_pairs.append((user1, user2))
         
         return selected_pairs

@@ -29,7 +29,7 @@ class user_pairs:
         'manual',   # [0] # for testing
         'random',   # [1]
     ]
-    selection_scheme = _choices[0]
+    selection_scheme = _choices[1]
     # placeholder:
     manual_user_pairs = [('ATLA-M5', 'WASHng'), ('LOSAng', 'KSCYng'), ('STTLng', 'CHINng'), ('NYCMng', 'ATLAng')] # this is only used when selection_scheme = 'manual'. pairs are specified by tuple of node names. This is useful for testing purposes.
 
