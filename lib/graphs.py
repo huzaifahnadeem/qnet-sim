@@ -191,11 +191,24 @@ class QONgraph:
 
         return storage_nodes
     
+    def _random_user_pairs_selection(self):
+        no_of_user_pairs = self.workload.user_pairs.number
+        selected_pairs = [] # list of tuples
+        for _ in range(no_of_user_pairs):
+            user1 = self.common_random.choice(list(self._nx_graph.nodes()))
+            while True:
+                user2 = self.common_random.choice(list(self._nx_graph.nodes()))
+                if user1 != user2:
+                    break
+            selected_pairs.append((user1, user2))
+        
+        return selected_pairs
+
     def _get_user_pairs(self):
         selection_scheme = self.workload.user_pairs.selection_scheme
         user_pairs = []
         if selection_scheme == 'random':
-            raise NameError("TODO")
+            user_pairs = self._random_user_pairs_selection()
         elif selection_scheme == 'manual':
             user_pairs = self.workload.user_pairs.manual_user_pairs
         else:
