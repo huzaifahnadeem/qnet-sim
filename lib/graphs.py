@@ -173,7 +173,21 @@ class QONgraph:
     
     def _draw_graph(self, action=None, filename="graph.png"):
         class config:
-            pos_seed = 0
+            class layout:
+                _func_map = {
+                'fruchterman reingold': nx.fruchterman_reingold_layout,
+                'circular': nx.circular_layout,
+                'spectral': nx.random_layout,
+                'random': nx.spectral_layout,
+                'spring': nx.spring_layout, # internally in networkx is equal to 'fruchterman reingold'
+                'kamada kawai': nx.kamada_kawai_layout,
+                'planar': nx.planar_layout,
+                'spiral': nx.spiral_layout,
+                }
+                
+                function = _func_map['kamada kawai']
+                # function = _func_map['fruchterman reingold'] 
+                # kamada kawai seems best for our use. fruchterman reingold also seems good
 
             class edges:
                 arrow_size = 20
@@ -197,10 +211,8 @@ class QONgraph:
                     size = 600
                     shape = 'o' # circle
                     edge_color = 'black'
-
-        pos = nx.spring_layout(self._nx_graph, seed=config.pos_seed) 
-        
-        # colors represent user pairs. user pairs also marked by a number in parenthesis next to node name #TODO
+    
+        pos = config.layout.function(self._nx_graph)
 
         # edge labels:
         edge_capacities = nx.get_edge_attributes(self._nx_graph, "capacity")
@@ -237,7 +249,7 @@ class QONgraph:
             ).set_edgecolor(config.nodes.other.edge_color)
         
         # all nodes' labels
-        node_labels = {} #{n: n for (n, ddict) in self._nx_graph.nodes(data = True) if ddict["up_id"] is None}
+        node_labels = {}
         for (n, ddict) in self._nx_graph.nodes(data = True):
             node_labels[n] = n if ddict["up_id"] is None else n + ' (' + str(ddict["up_id"]) + ')'
         nx.draw_networkx_labels(
