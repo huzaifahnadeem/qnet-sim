@@ -237,7 +237,14 @@ class QONgraph:
             ).set_edgecolor(config.nodes.other.edge_color)
         
         # all nodes' labels
-        nx.draw_networkx_labels(self._nx_graph, pos)
+        node_labels = {} #{n: n for (n, ddict) in self._nx_graph.nodes(data = True) if ddict["up_id"] is None}
+        for (n, ddict) in self._nx_graph.nodes(data = True):
+            node_labels[n] = n if ddict["up_id"] is None else n + ' (' + str(ddict["up_id"]) + ')'
+        nx.draw_networkx_labels(
+            self._nx_graph, 
+            pos,
+            labels = node_labels
+            )
         
         # draw all edges:
         nx.draw_networkx_edges(self._nx_graph, pos, arrowsize = config.edges.arrow_size)
