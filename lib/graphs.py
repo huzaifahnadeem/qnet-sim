@@ -99,10 +99,14 @@ class QONgraph:
             nx_graph = self._graph_obj_for_IBM()
         elif graph_name == 'SURFnet':
             nx_graph = self._graph_obj_for_SURFnet()
-        elif graph_name == 'G(50,0.1)':
+        elif graph_name == 'G(50, 0.1)':
             nx_graph = self._graph_obj_for_G50_01()
-        elif graph_name == 'G(50,0.05)':
+        elif graph_name == 'G(50, 0.05)':
             nx_graph = self._graph_obj_for_G50_005()
+        elif graph_name == 'PA(50, 2)':
+            raise NameError("The graph 'PA(50, 2)' not implemented yet") # TODO
+        elif graph_name == 'PA(50, 3)':
+            raise NameError("The graph 'PA(50, 3)' not implemented yet") # TODO
         else:
             raise NameError("Invalid graph name specified in the configuration file")
 
@@ -135,6 +139,7 @@ class QONgraph:
     def _initialize_graph(self):
         self._initialize_node_types()
         self._initialize_link_capacities()
+        self._initialize_link_fidelities()
     
     def _get_storage_nodes(self):
         return ['NYCMng'] # placeholder. TODO: fix
@@ -157,6 +162,13 @@ class QONgraph:
             ids[user] = this_id
         nx.set_node_attributes(self._nx_graph, ids, name='up_id')
 
+    def _initialize_link_fidelities(self):
+        pass # TODO
+
+    def _kk_into_fr(self):
+        # TODO: kamaka kawai for initial pos feed into fruchterman reingold ref https://en.wikipedia.org/wiki/Force-directed_graph_drawing#cite_note-fr91-12
+        raise NameError("'kk --> fr' not implemented yet")
+
     ### public methods:
 
     def __init__(self, config_filename) -> None:
@@ -172,9 +184,9 @@ class QONgraph:
         self._draw_graph(action='show')
     
     def _draw_graph(self, action=None, filename="graph.png"):
-        class config:
+        class config: # shorter aliases for longer variable names containing config info from the config file
             class layout:
-                _func_map = {
+                _function_for = {
                 'fruchterman reingold': nx.fruchterman_reingold_layout,
                 'circular': nx.circular_layout,
                 'spectral': nx.random_layout,
@@ -183,35 +195,34 @@ class QONgraph:
                 'kamada kawai': nx.kamada_kawai_layout,
                 'planar': nx.planar_layout,
                 'spiral': nx.spiral_layout,
+                'kk --> fr': self._kk_into_fr,
                 }
                 
-                function = _func_map['kamada kawai']
-                # function = _func_map['fruchterman reingold'] 
-                # kamada kawai seems best for our use. fruchterman reingold also seems good
+                function = _function_for[self.config.graph.layout.name]
 
             class edges:
-                arrow_size = 20
+                arrow_size = self.config.graph.edges.arrow_size
             
             class nodes:
-            
                 class up:
-                    colors = [None, 'cyan', 'green', 'yellow', 'pink', 'red', 'purple', 'blue', 'indigo'] # later on using up_ids as index for colors so adding a None at index 0
-                    size = 700
-                    shape = 's' # square
-                    edge_color = 'green'
+                    colors = [None, *self.config.graph.nodes.user_pair.colors] # later on using up_ids as index for colors so adding a None at index 0
+                    size = self.config.graph.nodes.user_pair.size
+                    shape = self.config.graph.nodes.user_pair.shape
+                    edge_color = self.config.graph.nodes.user_pair.edge_color
 
                 class storage:
-                    color = 'gray'
-                    size = 1000
-                    shape = '^' # triangle
-                    edge_color = 'red'
+                    color = self.config.graph.nodes.storage.color
+                    size = self.config.graph.nodes.storage.size
+                    shape = self.config.graph.nodes.storage.shape
+                    edge_color = self.config.graph.nodes.storage.edge_color
                 
                 class other:
-                    color = 'white'
-                    size = 600
-                    shape = 'o' # circle
-                    edge_color = 'black'
-    
+                    color = self.config.graph.nodes.other.color
+                    size = self.config.graph.nodes.other.size
+                    shape = self.config.graph.nodes.other.shape
+                    edge_color = self.config.graph.nodes.other.color
+
+        # set up node positions in the graph:
         pos = config.layout.function(self._nx_graph)
 
         # edge labels:
