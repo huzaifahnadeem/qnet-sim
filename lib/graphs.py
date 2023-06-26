@@ -90,7 +90,7 @@ class QONgraph:
         return G_50_005
     
     def _import_graph(self):
-        graph_name = self.config.graph.name   
+        graph_name = self.workload.graph.name   
         if graph_name == 'ATT':
             nx_graph = self._graph_obj_for_ATT()
         elif graph_name == 'Abilene':
@@ -115,8 +115,8 @@ class QONgraph:
     def _initialize_link_capacities(self):
         # link capacities are represented by the internal nx_graph's weights
         capacities = {}
-        rand_a = self.config.fixed_params.c_u_v.random_start
-        rand_b = self.config.fixed_params.c_u_v.random_stop
+        rand_a = self.workload.fixed_params.c_u_v.random_start
+        rand_b = self.workload.fixed_params.c_u_v.random_stop
         for e in nx.edges(self._nx_graph):
             unif_random_value = int(self.common_random.uniform(rand_a, rand_b))
             capacities[e] = unif_random_value
@@ -173,6 +173,7 @@ class QONgraph:
 
     def __init__(self, config_filename) -> None:
         self.config = importlib.import_module(config_filename, package=None)
+        self.workload = importlib.import_module('.workload', package='workloads') # TODO: pass workload file name as param
         self.common_random = CommonRandom(self.config.random_params.seed)
         self._nx_graph = self._import_graph()
         self._initialize_graph()
@@ -220,7 +221,7 @@ class QONgraph:
                     color = self.config.graph.nodes.other.color
                     size = self.config.graph.nodes.other.size
                     shape = self.config.graph.nodes.other.shape
-                    edge_color = self.config.graph.nodes.other.color
+                    edge_color = self.config.graph.nodes.other.edge_color
 
         # set up node positions in the graph:
         pos = config.layout.function(self._nx_graph)
