@@ -129,7 +129,13 @@ class QONgraph:
         values = {}
         rand_a = from_workload[attribute_name]['start']
         rand_b = from_workload[attribute_name]['stop']
-        for e in nx.edges(self._nx_graph):
+        
+        if type(self._nx_graph) is nx.MultiGraph: # for SURFnet
+            edges_iterator = self._nx_graph.edges(keys=True) # edge 'keys' are needed to add attributes for multigraphs
+        else: # only SURFnet is multigraph
+            edges_iterator = nx.edges(self._nx_graph)
+
+        for e in edges_iterator:
             unif_random_value = self.common_random.uniform(rand_a, rand_b)
             values[e] = unif_random_value
         nx.set_edge_attributes(self._nx_graph, values, name=attribute_name)
