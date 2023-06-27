@@ -282,6 +282,12 @@ class QONgraph:
                 }
                 
                 function = _function_for[self.config.graph.layout.name]
+            
+            class plot:
+                width = self.config.graph.plot.width
+                height = self.config.graph.plot.height
+                dpi = self.config.graph.plot.dpi
+
 
             class edges:
                 arrow_size = self.config.graph.edges.arrow_size
@@ -307,6 +313,15 @@ class QONgraph:
 
         # set up node positions in the graph:
         pos = config.layout.function(self._nx_graph)
+
+        # plt figure size:
+        plt.figure(
+            figsize = (
+                config.plot.width, 
+                config.plot.height
+                ), 
+                dpi = config.plot.dpi
+                ) # 'width' x 'height' in inches s.t. each 1 inch is equal to 'dpi' pixels
 
         # draw graph:
         # draw storage nodes:

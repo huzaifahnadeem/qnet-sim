@@ -39,6 +39,9 @@ class graph:
     
     class edges:
         arrow_size = 20
+    
+    class plot:
+        width, height, dpi = 15, 9.75, 80
 
 class random_params:
     seed = 0
