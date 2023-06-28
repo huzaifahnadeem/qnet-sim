@@ -5,7 +5,7 @@ import traceback
 from lib.graphs import QONgraph as graphs
 from types import ModuleType
 import argparse
-import importlib
+import importlib.util
 
 def get_args(argv):
     # parser initialization:
@@ -29,6 +29,8 @@ def main(argv):
 
 if __name__ == '__main__':
     try:
+        if importlib.util.find_spec("tmgen") is None:
+            raise Exception("tmgen is not installed. Install all requirements. See ./README.md")
         main(sys.argv[1:])
         sys.exit(0) # successful termination
     except SystemExit:

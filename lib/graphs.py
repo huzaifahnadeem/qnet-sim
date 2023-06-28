@@ -2,6 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import importlib
 from lib.common_random import CommonRandom
+import tmgen
 
 class QONgraph:
     ### private methods: # TODO most of the functions are unneccessary for each object. maybe move these to a separate file
@@ -250,21 +251,6 @@ class QONgraph:
         inital_pos = nx.kamada_kawai_layout(G)
         final_pos = nx.fruchterman_reingold_layout(G, pos = inital_pos)
         return final_pos
-
-    ### public methods:
-
-    def __init__(self, config_filename) -> None:
-        self.config = importlib.import_module(config_filename, package=None)
-        self.workload = importlib.import_module('.workload', package='workloads') # TODO: pass workload file name as param
-        self.common_random = CommonRandom(self.config.random_params.seed)
-        self._nx_graph = self._import_graph()
-        self._initialize_graph()
-
-    def save_graph(self, filename="graph.png"):
-        self._draw_graph(action='save', filename=filename)
-
-    def show_graph(self):
-        self._draw_graph(action='show')
     
     def _draw_graph(self, action=None, filename="graph.png"):
         class config: # shorter aliases for longer variable names containing config info from the config file
@@ -311,9 +297,6 @@ class QONgraph:
                     shape = self.config.graph.nodes.other.shape
                     edge_color = self.config.graph.nodes.other.edge_color
 
-        # set up node positions in the graph:
-        pos = config.layout.function(self._nx_graph)
-
         # plt figure size:
         plt.figure(
             figsize = (
@@ -322,6 +305,9 @@ class QONgraph:
                 ), 
                 dpi = config.plot.dpi
                 ) # 'width' x 'height' in inches s.t. each 1 inch is equal to 'dpi' pixels
+
+        # set up node positions in the graph:
+        pos = config.layout.function(self._nx_graph)
 
         # draw graph:
         # draw storage nodes:
@@ -384,4 +370,31 @@ class QONgraph:
         if action == 'show':
             plt.title(plot_title)
             plt.show()
-    
+
+    def _gen_demands(self):
+        # lib ref: https://tmgen.readthedocs.io/en/latest/api.html?highlight=models%20spike_tm#tmgen.models.spike_tm
+
+        # calculating mean_spike:
+        topology_capacity = None # TODO
+
+        tmgen.models.spike_tm(
+            num_nodes = self.workload.user_pairs.number,
+            num_spikes = self.workload.user_pairs.num_pairs_with_spikes,
+            mean_spike = topology_capacity/self.workload.user_pairs.num_pairs_with_spikes,
+            num_epochs = len(self.workload.fixed_params.T) # no of time intervals
+        )
+
+    ### public methods:
+
+    def __init__(self, config_filename) -> None:
+        self.config = importlib.import_module(config_filename, package=None)
+        self.workload = importlib.import_module('.workload', package='workloads') # TODO: pass workload file name as param
+        self.common_random = CommonRandom(self.config.random_params.seed)
+        self._nx_graph = self._import_graph()
+        self._initialize_graph()
+
+    def save_graph(self, filename="graph.png"):
+        self._draw_graph(action='save', filename=filename)
+
+    def show_graph(self):
+        self._draw_graph(action='show')

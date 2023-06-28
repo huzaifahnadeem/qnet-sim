@@ -6,3 +6,5 @@ lib/__pycache__/
 lib/.DS_Store
 graph.png
 tmp/
+venv
+tmgen

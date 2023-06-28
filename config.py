@@ -41,7 +41,9 @@ class graph:
         arrow_size = 20
     
     class plot:
+        # 'width' x 'height' in inches s.t. each 1 inch is equal to 'dpi' pixels
         width, height, dpi = 15, 9.75, 80
 
 class random_params:
+    # None can be used to use system time for as seed
     seed = 0

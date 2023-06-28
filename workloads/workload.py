@@ -9,7 +9,7 @@ class graph:
         'PA(50, 2)',    # [6]
         'PA(50, 3)',    # [7]
     ]
-    name = _choices[0]
+    name = _choices[1]
 
 class storage_servers:
     _choices = [
@@ -22,7 +22,11 @@ class storage_servers:
     manual_storage_servers = ['NYCMng'] # this is only used when selection_scheme = 'manual'. storage servers are specified by node names. This is useful for testing purposes.
 
 class user_pairs:
+    # number of user pairs:
     number = 6 # temp. same value as the QON paper used => presumably because abilene (the smallest graph) can have at most 6 pairs (total 12 nodes)
+
+    # number of user pairs that can have a spike in their demand at each time interval:
+    num_pairs_with_spikes = 3 # fixed as 3 in the QON paper
 
     # it is unclear how they choose these user pairs in the QON paper so for now going with the only option as randomly choosing the pairs (could potentially add other schemes therefore adding it as:
     _choices = [
