@@ -155,10 +155,39 @@ class QONgraph:
         nx.set_node_attributes(self._nx_graph, node_type, name='type')
         self._set_user_pair_ids(all_users[0], all_users[1])
 
+    def _add_virtual_links(self):
+        # for all edges, set the attribute 'is_virtual' to False and the attribute 'corresponds_to_path' as None:
+        nx.set_edge_attributes(self._nx_graph, False, name='is_virtual')
+        nx.set_edge_attributes(self._nx_graph, None, name='corresponds_to_path')
+
+        # now on to virtual paths:
+        storage_nodes = [n for (n, ddict) in self._nx_graph.nodes(data = True) if 'storage' in ddict["type"]]
+        virtual_links = []
+        for n1 in storage_nodes:
+            for n2 in storage_nodes:
+                if n1 == n2:
+                    continue
+                # for each path between n1 and n2, there is a corresponding virtual link
+                for path in nx.all_simple_paths(self._nx_graph, n1, n2):
+                    virtual_links.append((n1, n2, path))
+        
+        # add virtual links as edges in the graph with attributes set accordingly
+        for v_link in virtual_links:
+            u, v, path = v_link[0], v_link[1], v_link[2]
+            self._nx_graph.add_edge(
+            u_of_edge = u, 
+            v_of_edge = v,
+            is_virtual = True,
+            corresponds_to_path = path,
+            capacity = None, # TODO confirm whether these edges have any capacity/fidelity
+            fidelity = None,
+            )
+
     def _initialize_graph(self):
         self._initialize_node_types()
         self._initialize_link_capacities()
         self._initialize_link_fidelities()
+        self._add_virtual_links()
     
     def _random_storage_nodes_selection(self):
         # TODO: no_of_storage_nodes is randomly selected for now. Should this be changed?
@@ -371,18 +400,28 @@ class QONgraph:
             plt.title(plot_title)
             plt.show()
 
+    def _get_topology_capacity(self):
+        # unsure about what topology capacity is in the QON paper. going with whatever seems reasonable right now # TODO: confirm this is ok
+        cap = 0
+        for (u, v, c) in self._nx_graph.edges.data('capacity'):
+            cap += c
+        return cap
+
     def _gen_demands(self):
         # lib ref: https://tmgen.readthedocs.io/en/latest/api.html?highlight=models%20spike_tm#tmgen.models.spike_tm
 
         # calculating mean_spike:
-        topology_capacity = None # TODO
+        topology_capacity = self._get_topology_capacity()
+        # TODO
 
-        tmgen.models.spike_tm(
+        demands = tmgen.models.spike_tm(
             num_nodes = self.workload.user_pairs.number,
             num_spikes = self.workload.user_pairs.num_pairs_with_spikes,
             mean_spike = topology_capacity/self.workload.user_pairs.num_pairs_with_spikes,
             num_epochs = len(self.workload.fixed_params.T) # no of time intervals
         )
+        
+        return demands
 
     ### public methods:
 
@@ -392,6 +431,7 @@ class QONgraph:
         self.common_random = CommonRandom(self.config.random_params.seed)
         self._nx_graph = self._import_graph()
         self._initialize_graph()
+        self._gen_demands()
 
     def save_graph(self, filename="graph.png"):
         self._draw_graph(action='save', filename=filename)
