@@ -190,8 +190,10 @@ class QONgraph:
         self._add_virtual_links()
     
     def _random_storage_nodes_selection(self):
-        # TODO: no_of_storage_nodes is randomly selected for now. Should this be changed?
-        no_of_storage_nodes = self.common_random.randint(0, self._nx_graph.number_of_nodes())
+        no_of_storage_nodes = self.workload.storage_servers.num_servers
+        if no_of_storage_nodes < 0: # negative num means choose the number randomly
+            no_of_storage_nodes = self.common_random.randint(0, self._nx_graph.number_of_nodes())
+
         selected_nodes = []
         for _ in range(no_of_storage_nodes):
             while True:
@@ -202,8 +204,10 @@ class QONgraph:
         return selected_nodes
 
     def _degree_storage_nodes_selection(self):
-        # TODO: no_of_storage_nodes is randomly selected for now. Should this be changed?
-        no_of_storage_nodes = self.common_random.randint(0, self._nx_graph.number_of_nodes())
+        no_of_storage_nodes = self.workload.storage_servers.num_servers
+        if no_of_storage_nodes < 0: # negative num means choose the number randomly
+            no_of_storage_nodes = self.common_random.randint(0, self._nx_graph.number_of_nodes())
+            
         selected_nodes = []
         nodes_list = list(self._nx_graph.degree) # TODO is this correct?
         nodes_list = sorted(nodes_list, key=lambda x: x[1], reverse=True)

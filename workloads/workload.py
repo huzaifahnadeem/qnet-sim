@@ -17,8 +17,9 @@ class storage_servers:
         'random',   # [1] 
         'degree',   # [2]
     ]
-    selection_scheme = _choices[1]
+    selection_scheme = _choices[2]
     # placeholder:
+    num_servers = 3 # how many servers should there be. use any negative number for random number of servers. for manual selection scheme this number is not taken into account, only the list 'manual_storage_servers' is taken into account. is num_servers > total number of nodes then undefined behavior
     manual_storage_servers = ['NYCMng'] # this is only used when selection_scheme = 'manual'. storage servers are specified by node names. This is useful for testing purposes.
 
 class user_pairs:
