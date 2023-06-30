@@ -306,6 +306,10 @@ class QONgraph:
 
             class edges:
                 arrow_size = self.config.graph.edges.arrow_size
+                style_non_virtual = self.config.graph.edges.style_non_virtual
+                style_virtual = self.config.graph.edges.style_virtual
+                color_virtual = self.config.graph.edges.color_virtual
+                color_non_virtual = self.config.graph.edges.color_non_virtual
             
             class nodes:
                 class up:
@@ -380,8 +384,25 @@ class QONgraph:
             labels = node_labels
             )
         
-        # draw all edges:
-        nx.draw_networkx_edges(self._nx_graph, pos, arrowsize = config.edges.arrow_size)
+        # draw non-virtual edges:
+        nx.draw_networkx_edges(
+            G = self._nx_graph, 
+            pos = pos, 
+            edgelist = [(u, v) for (u, v, ddict) in self._nx_graph.edges(data = True) if ddict["is_virtual"] == False],
+            arrowsize = config.edges.arrow_size,
+            style = config.edges.style_non_virtual,
+            edge_color = config.edges.color_non_virtual,
+            )
+        
+        # draw non-virtual edges:
+        nx.draw_networkx_edges(
+            G = self._nx_graph, 
+            pos = pos, 
+            edgelist = [(u, v) for (u, v, ddict) in self._nx_graph.edges(data = True) if ddict["is_virtual"] == True],
+            arrowsize = config.edges.arrow_size,
+            style = config.edges.style_virtual,
+            edge_color = config.edges.color_virtual,
+            )
         
         # edge labels: # TODO: the following code works fine but graph is too messy. fix that and then print edge labels with both capacity and fidelity neatly
         # edge_capacities = nx.get_edge_attributes(self._nx_graph, "capacity")
@@ -431,7 +452,7 @@ class QONgraph:
         self.common_random = CommonRandom(self.config.random_params.seed)
         self._nx_graph = self._import_graph()
         self._initialize_graph()
-        self._gen_demands()
+        # self._gen_demands()
 
     def save_graph(self, filename="graph.png"):
         self._draw_graph(action='save', filename=filename)

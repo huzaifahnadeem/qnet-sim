@@ -39,6 +39,12 @@ class graph:
     
     class edges:
         arrow_size = 20
+        # possible styles: ‘-’, ‘–’, ‘-.’, ‘:’ or words like ‘solid’ or ‘dashed’ 
+        style_non_virtual = 'solid'
+        style_virtual = '-.'
+
+        color_non_virtual = 'black'
+        color_virtual = 'red'
     
     class plot:
         # 'width' x 'height' in inches s.t. each 1 inch is equal to 'dpi' pixels
