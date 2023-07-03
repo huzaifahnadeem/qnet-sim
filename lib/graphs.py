@@ -354,7 +354,7 @@ class QONgraph:
             nodelist = [n for (n, ddict) in self._nx_graph.nodes(data = True) if 'storage' in ddict["type"]], 
             node_color = config.nodes.storage.color, 
             node_size = config.nodes.storage.size,
-            node_shape = config.nodes.storage.shape
+            node_shape = config.nodes.storage.shape,
             ).set_edgecolor(config.nodes.storage.edge_color)
         
         # draw user pair nodes: (note: type 'up' = 'user pair') 
@@ -398,7 +398,7 @@ class QONgraph:
             edge_color = config.edges.color_non_virtual,
             )
         
-        # draw non-virtual edges:
+        # draw virtual edges:
         nx.draw_networkx_edges(
             G = self._nx_graph, 
             pos = pos, 

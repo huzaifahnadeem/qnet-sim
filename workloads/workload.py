@@ -18,8 +18,9 @@ class storage_servers:
         'degree',   # [2]
     ]
     selection_scheme = _choices[2]
-    # placeholder:
+    
     num_servers = 3 # how many servers should there be. use any negative number for random number of servers. for manual selection scheme this number is not taken into account, only the list 'manual_storage_servers' is taken into account. is num_servers > total number of nodes then undefined behavior
+    
     manual_storage_servers = ['NYCMng'] # this is only used when selection_scheme = 'manual'. storage servers are specified by node names. This is useful for testing purposes.
 
 class user_pairs:
@@ -43,7 +44,6 @@ class fixed_params: # the parameters that were fixed in Table II in the QON pape
     T = set(t for t in range(0, 10*delta, delta))   # |T| = 10
 
     # c_u_v :  capacity of link (u, v) in EPRs/sec. Values fixed as follows: c(u,v) = Unif[200,1400]
-    
     class c_u_v:
         random_start = 200
         random_stop = 1400 
