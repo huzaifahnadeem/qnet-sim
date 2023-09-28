@@ -19,9 +19,11 @@ class storage_servers:
     ]
     selection_scheme = _choices[2]
     
-    num_servers = 3 # how many servers should there be. use any negative number for random number of servers. for manual selection scheme this number is not taken into account, only the list 'manual_storage_servers' is taken into account. is num_servers > total number of nodes then undefined behavior
+    num_servers = 4 # how many servers should there be. use any negative number for random number of servers. for manual selection scheme this number is not taken into account, only the list 'manual_storage_servers' is taken into account. is num_servers > total number of nodes then undefined behavior
     
     manual_storage_servers = ['NYCMng'] # this is only used when selection_scheme = 'manual'. storage servers are specified by node names. This is useful for testing purposes.
+
+    prob_successful_entanglement = 0.75 # the probability that an entanglement is successful
 
 class user_pairs:
     # number of user pairs:
@@ -39,18 +41,20 @@ class user_pairs:
     # placeholder:
     manual_user_pairs = [('ATLA-M5', 'WASHng'), ('LOSAng', 'KSCYng'), ('STTLng', 'CHINng'), ('NYCMng', 'ATLAng')] # this is only used when selection_scheme = 'manual'. pairs are specified by tuple of node names. This is useful for testing purposes.
 
+    app_min_fidelity_threshold = 0.995
+
 class fixed_params: # the parameters that were fixed in Table II in the QON paper
     delta = 20 # Δ = 20 sec = duration of 1 time interval in seconds
     T = set(t for t in range(0, 10*delta, delta))   # |T| = 10
 
     # c_u_v :  capacity of link (u, v) in EPRs/sec. Values fixed as follows: c(u,v) = Unif[200,1400]
     class c_u_v:
-        random_start = 200
-        random_stop = 1400 
+        random_min = 200
+        random_max = 1400 
 
     # Link Fidelity = Unif[0.96,0.99]
     class link_fidelity:
-        random_start = 0.96
-        random_stop = 0.99
+        random_min = 0.96
+        random_max = 0.99
 
     B_s = 12000 # the capacity of storage servers in no. of EPR pairs (all servers have a fixed value of 12000)

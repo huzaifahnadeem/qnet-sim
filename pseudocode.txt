@@ -1,0 +1,42 @@
+// inputs:
+input graph as G s.t. G = (V, E)
+input parameters as params
+
+// initialization procedure for nodes:
+for all V in G: 
+    set storage nodes' type as such (ALG = degree/random/manual as in params)
+for all V in G: 
+    set user-pairs types as such (ALG = random/manual as in params)
+// a node can be both a storage node and part of a user pair
+
+// initialization procedure for edges:
+for all E in G: 
+    set link capacities EPRs/sec (random vals in range: params.cap.start, params.cap.stop)
+for all E in G: 
+    set link fidelities (random vals in range: params.fid.start, params.fid.stop)
+
+// adding virtual links:
+for each combination of storage server pairs:
+    for each path using edges in E between the two servers in the pair:
+        add a virtual link E~ corresponding to this path
+        set fidelity of this v-link as follows:
+            1/4+(3/4)*((4*(edge 1 fidelity)-1)/3)*((4*(edge 2 fidelity)-1)/3)* ... *((4*(edge n fidelity)-1)/3)
+
+// generate demands:
+use spike model in the tmgen library (i.e. tmgen.models.spike_tm) with parameters set as:
+    num_nodes = number of user pairs in the graph (set in params e.g. 6),
+    num_spikes = user pairs that can have a spike in demand in a time interval (set in params e.g. 3)
+    mean_spike = normalized topology capacity
+    num_epochs = no of time intervals for the workload (part of param e.g 10)
+// regarding normalized topology capacity currently using non-normalized as max(all V in G)
+
+// process demands:
+define: a demand is satisfied if all user-pairs' demands for all the time intervals are satisfied.
+for each time interval:
+    for each demand 'd' between user pairs (u, v) in this interval:
+        from node u to v, find paths (virtual or non virtual) that have the min required fidelity. 
+        for non-virtual paths, all edges need to have a capacity >= d.
+        use the first path in list of useable paths. if that doesnt work then second in the list and so on.
+        for all virtual links used in this path:
+            for each EPR pair to be used between server pairs:
+                deduct the from both storage servers' EPR pairs the value 'd' with probability params.prob_successful_entanglement (e.g. with this probability as 75%, 25% of entanglements fail and need to be repeated. deduct the eventually used number of pairs after the probability).

@@ -118,18 +118,18 @@ class QONgraph:
 
         from_workload = {
             'capacity': {
-                'start': self.workload.fixed_params.c_u_v.random_start,
-                'stop': self.workload.fixed_params.c_u_v.random_stop,
+                'min': self.workload.fixed_params.c_u_v.random_min,
+                'max': self.workload.fixed_params.c_u_v.random_max,
             },
             'fidelity': {
-                'start': self.workload.fixed_params.link_fidelity.random_start,
-                'stop': self.workload.fixed_params.link_fidelity.random_stop,
+                'min': self.workload.fixed_params.link_fidelity.random_min,
+                'max': self.workload.fixed_params.link_fidelity.random_max,
             },
         }
-
+    
         values = {}
-        rand_a = from_workload[attribute_name]['start']
-        rand_b = from_workload[attribute_name]['stop']
+        rand_a = from_workload[attribute_name]['min']
+        rand_b = from_workload[attribute_name]['max']
         
         if type(self._nx_graph) is nx.MultiGraph: # for SURFnet
             edges_iterator = self._nx_graph.edges(keys=True) # edge 'keys' are needed to add attributes for multigraphs
@@ -155,10 +155,22 @@ class QONgraph:
         nx.set_node_attributes(self._nx_graph, node_type, name='type')
         self._set_user_pair_ids(all_users[0], all_users[1])
 
+    def _basic_path_fidelity(self, path):
+        basic_fidelity = 1/4+(3/4)*(4*self._nx_graph.edges[path[0], path[1]]["fidelity"]-1)/3
+
+        for i in range(2, len(path)):
+            next_edge = self._nx_graph.edges[path[i-1], path[i]]
+            basic_fidelity  = (basic_fidelity)*((4*next_edge["fidelity"]-1)/3)
+        
+        return basic_fidelity
+
     def _add_virtual_links(self):
-        # for all edges, set the attribute 'is_virtual' to False and the attribute 'corresponds_to_path' as None:
+        # for all edges, set the attribute 'is_virtual' to False and the following attributes that are only useful for virtual links to None:
         nx.set_edge_attributes(self._nx_graph, False, name='is_virtual')
-        nx.set_edge_attributes(self._nx_graph, None, name='corresponds_to_path')
+        nx.set_edge_attributes(self._nx_graph, None, name='num_of_EPR_pairs_for_this_link')
+        nx.set_edge_attributes(self._nx_graph, None, name='corresponding_non_virtual_path')
+        nx.set_edge_attributes(self._nx_graph, None, name='corresponding_non_virtual_path_min_capacity')
+        nx.set_edge_attributes(self._nx_graph, None, name='corresponding_non_virtual_path_basic_fidelity')
 
         # now on to virtual paths:
         storage_nodes = [n for (n, ddict) in self._nx_graph.nodes(data = True) if 'storage' in ddict["type"]]
@@ -178,9 +190,15 @@ class QONgraph:
             u_of_edge = u, 
             v_of_edge = v,
             is_virtual = True,
-            corresponds_to_path = path,
-            capacity = None, # TODO confirm whether these edges have any capacity/fidelity
-            fidelity = None,
+            num_of_EPR_pairs_for_this_link = 0,
+            corresponding_non_virtual_path = path,
+            corresponding_non_virtual_path_min_capacity = self._min_capacity_for_path(path),
+            corresponding_non_virtual_path_basic_fidelity = self._basic_path_fidelity(path),
+            capacity = 0, # TODO confirm whether these edges have any capacity and what
+            fidelity = self.common_random.uniform(
+                a = self.workload.fixed_params.link_fidelity.random_min,
+                b = self.workload.fixed_params.link_fidelity.random_max
+            ),
             )
 
     def _initialize_graph(self):
@@ -239,9 +257,11 @@ class QONgraph:
         for _ in range(no_of_user_pairs):
             user1 = self.common_random.choice(nodes_list)
             nodes_list.remove(user1)
-            user2 = self.common_random.choice(nodes_list)
-            nodes_list.remove(user2)
-            selected_pairs.append((user1, user2))
+            # user2 = self.common_random.choice(nodes_list)
+            # nodes_list.remove(user2)
+            # selected_pairs.append((user1, user2))
+            # TODO: this is tmp while you figure out whether it is total 6 user pairs or 6 users
+            selected_pairs.append((user1, user1))
         
         return selected_pairs
 
@@ -268,7 +288,8 @@ class QONgraph:
                 ind = user_pairs_list_a.index(user)
             except ValueError:
                 ind = user_pairs_list_b.index(user)
-            this_id = ind + 1
+            # this_id = ind + 1
+            this_id = ind
             ids[user] = this_id
         nx.set_node_attributes(self._nx_graph, ids, name='up_id')
 
@@ -317,7 +338,8 @@ class QONgraph:
             
             class nodes:
                 class up:
-                    colors = [None, *self.config.graph.nodes.user_pair.colors] # later on using up_ids as index for colors so adding a None at index 0
+                    # colors = [None, *self.config.graph.nodes.user_pair.colors] # later on using up_ids as index for colors so adding a None at index 0
+                    colors = ['orange', *self.config.graph.nodes.user_pair.colors]
                     size = self.config.graph.nodes.user_pair.size
                     shape = self.config.graph.nodes.user_pair.shape
                     edge_color = self.config.graph.nodes.user_pair.edge_color
@@ -409,9 +431,14 @@ class QONgraph:
             )
         
         # edge labels: # TODO: the following code works fine but graph is too messy. fix that and then print edge labels with both capacity and fidelity neatly
-        # edge_capacities = nx.get_edge_attributes(self._nx_graph, "capacity")
-        # nx.draw_networkx_edge_labels(self._nx_graph, pos, edge_labels = edge_capacities)
-        # edge_fidelities = nx.get_edge_attributes(self._nx_graph, "fidelity")
+        edge_capacities = nx.get_edge_attributes(self._nx_graph, "capacity")
+        edge_fidelities = nx.get_edge_attributes(self._nx_graph, "fidelity")
+        e_labels = {}
+        for e in edge_capacities:
+            this_cap = edge_capacities[e] if edge_capacities[e] is not None else 0
+            this_fid = edge_fidelities[e] if edge_fidelities[e] is not None else 0
+            e_labels[e] = "c=" + str(int(this_cap)) + ", f=" + str(round(float(this_fid), 3))
+        nx.draw_networkx_edge_labels(self._nx_graph, pos, edge_labels = e_labels)
         # for k in edge_fidelities:
         #     edge_fidelities[k] = round(edge_fidelities[k], 2)
         # nx.draw_networkx_edge_labels(self._nx_graph, pos, edge_labels = edge_fidelities)
@@ -427,10 +454,25 @@ class QONgraph:
 
     def _get_topology_capacity(self):
         # unsure about what topology capacity is in the QON paper. going with whatever seems reasonable right now # TODO: confirm this is ok
-        cap = 0
+        cap = []
         for (u, v, c) in self._nx_graph.edges.data('capacity'):
-            cap += c
-        return cap
+            if c is not None: # i.e. this is not a virtual edge
+                cap.append(c)
+        # TODO: normalizaton
+
+        return max(cap)
+
+    def _min_capacity_for_path(self, path):
+        # goes over all edges in path and returns the min capacity edge's value. i.e. the bottneck
+        cap = []
+        for (u, v, c) in self._nx_graph.edges.data('capacity'):
+            if c is not None: # i.e. this is not a virtual edge
+                cap.append(c)
+
+        # filter out zero capacities as for now virtual links have a cap of 0
+        cap[:] = [x for x in cap if int(x) != 0]
+
+        return min(cap)
 
     def _gen_demands(self):
         # lib ref: https://tmgen.readthedocs.io/en/latest/api.html?highlight=models%20spike_tm#tmgen.models.spike_tm
@@ -442,11 +484,126 @@ class QONgraph:
         demands = tmgen.models.spike_tm(
             num_nodes = self.workload.user_pairs.number,
             num_spikes = self.workload.user_pairs.num_pairs_with_spikes,
-            mean_spike = topology_capacity/self.workload.user_pairs.num_pairs_with_spikes,
+            mean_spike = topology_capacity,#/self.workload.user_pairs.num_pairs_with_spikes,
             num_epochs = len(self.workload.fixed_params.T) # no of time intervals
         )
         
         return demands
+
+    def _user_index_to_node_name(self, user_index):
+        users = [n for (n, ddict) in self._nx_graph.nodes(data = True) if 'up' in ddict["type"]]
+        
+        for node, attr in self._nx_graph.nodes(data = True):
+            if attr['up_id'] == user_index:
+                return node
+        
+        return None
+
+    def process_demands(self):
+        total_demands = 0
+        satisfied_demands_count = 0
+        print("process_demands():")
+        d_index = -1
+        for d in self.demands:
+            total_demands += 1
+            d_index += 1
+            print(f'demand # {d_index+1} out of {len(self.demands)}')
+            for t in range(d.num_epochs()):
+                print(f'\nt = {t}:')
+                demands_at_t = d.at_time(t)
+                u_index = -1
+                for u_to_v in demands_at_t:
+                    u_index += 1
+                    v_index = -1
+                    for this_d in u_to_v:
+                        this_demanded_cap = int(this_d)
+                        v_index += 1
+                        if this_demanded_cap > 0: # i.e. there is a demand of capacity from u to v
+                            src_node = self._user_index_to_node_name(u_index)
+                            dst_node = self._user_index_to_node_name(v_index)
+                            print(f'demand of {round(this_demanded_cap, 1)} from {src_node} ({u_index}) to {dst_node} ({v_index}):')
+                            if src_node == dst_node:
+                                satisfied_demands_count += 1
+                                print('src = dst -- satisfied')
+                            else:
+                                paths = nx.all_simple_paths(self._nx_graph, src_node, dst_node)
+                                non_useable_paths = []
+                                useable_paths = []
+                                for path in paths:
+                                    useable_paths.append(path)
+                                    # filter out paths that have an edge with capacity less than the demand
+                                    for i in range(1, len(path)):
+                                        next_edge = self._nx_graph.edges[path[i-1], path[i]]
+                                        if next_edge["capacity"] < this_demanded_cap:
+                                            if next_edge["capacity"] > 0: # virtual link:
+                                                non_useable_paths.append(path)
+                                                break
+                                        if next_edge["fidelity"] < self.workload.user_pairs.app_min_fidelity_threshold:
+                                            break
+                                for p in non_useable_paths:
+                                    useable_paths.remove(p)
+                                if useable_paths == []:
+                                    print('not satisfied (no paths with enough capacity/fidelity)') # TODO: maybe send some qubits through one path and send some through another.
+                                else: # TODO: case when two demands try to use the same edge and in that case the cumulative demanded capacity > edge capacity
+                                    print(f'possible with {len(useable_paths)} paths:')
+                                    demand_satisfied = False
+                                    for path in useable_paths:
+                                        if demand_satisfied is None:
+                                            break
+                                        if demand_satisfied:
+                                            satisfied_demands_count += 1
+                                            print('satisfied')
+                                            break
+                                        print(f'trying with path {path}')
+                                        for i in range(1, len(path)):
+                                            next_edge = self._nx_graph.edges[path[i-1], path[i]]
+                                            storage_server1 = path[i-1]
+                                            storage_server2 = path[i] 
+                                            if next_edge['is_virtual'] == True:
+                                                print(f'virtual edge in path (edge {(storage_server1, storage_server2)})')
+                                                print(f'stored num of EPR pairs for this virtual link = {next_edge["num_of_EPR_pairs_for_this_link"]}')
+                                                print(f'stored num of EPR pairs for all virtual links at server {storage_server1} = {self._total_EPR_pairs_for_server(storage_server1)}')
+                                                print(f'stored num of EPR pairs for all virtual links at server {storage_server2} = {self._total_EPR_pairs_for_server(storage_server2)}')
+
+                                                if next_edge["num_of_EPR_pairs_for_this_link"] < this_demanded_cap:
+                                                    print('not enough stored EPR pairs on the storage servers for this demand. generating as many EPR pairs as possible')
+                                                    bottleneck_cap = next_edge['corresponding_non_virtual_path_min_capacity']
+                                                    bottleneck_cap = int(bottleneck_cap)
+                                                    print(f'{bottleneck_cap} pairs possible as per the capacity over the corresponding non-virtual path')
+                                                    successfully_generate_pairs = 0
+                                                    for _ in range(bottleneck_cap):
+                                                        rand = self.common_random.randint(1, 101)
+                                                        if rand <= 100 * self.workload.storage_servers.prob_successful_entanglement:
+                                                            successfully_generate_pairs += 1
+                                                            # successful entanglement
+                                                    print(f'out of {bottleneck_cap} pairs {successfully_generate_pairs} new pairs successfully generated based on probability of success for each entanglement as {self.workload.storage_servers.prob_successful_entanglement}')
+                                                    
+                                                    self._nx_graph[storage_server1][storage_server2]['num_of_EPR_pairs_for_this_link'] += successfully_generate_pairs
+
+                                                if this_demanded_cap <= self._nx_graph[storage_server1][storage_server2]['num_of_EPR_pairs_for_this_link']:
+                                                    print(f'{this_demanded_cap} stored EPR pairs utilized to fulfil this demand of {this_demanded_cap} EPRs/s in this virtual link to satisfy this demand')
+                                                    satisfied_demands_count += 1
+                                                    self._nx_graph[storage_server1][storage_server2]['num_of_EPR_pairs_for_this_link'] = next_edge["num_of_EPR_pairs_for_this_link"] - this_demanded_cap
+                                                    demand_satisfied = None
+                                                    print(f"stored num of EPR pairs for this virtual link = {self._nx_graph[storage_server1][storage_server2]['num_of_EPR_pairs_for_this_link']}")
+                                                    print(f'stored num of EPR pairs for all virtual links at server {storage_server1} = {self._total_EPR_pairs_for_server(storage_server1)}')
+                                                    print(f'stored num of EPR pairs for all virtual links at server {storage_server2} = {self._total_EPR_pairs_for_server(storage_server2)}')
+                                                else:
+                                                    print(f'still not enough pairs. demand not satisfied')
+                                                    demand_satisfied = None
+                                                
+                                                break
+                                                    
+                                            demand_satisfied = True
+        total_demands = total_demands * len(self.workload.fixed_params.T) * self.workload.user_pairs.num_pairs_with_spikes
+        percentage_satisfied_demands = 100 * satisfied_demands_count / total_demands
+        print(f'percentage_satisfied_demands = {round(percentage_satisfied_demands, 2)} %')
+
+    def _total_EPR_pairs_for_server(self, server_node):
+        # returns the current total count of EPR pairs that this server_node has stored across all its virtual links.
+        num_of_EPR_pairs_per_link = [int(ddict["num_of_EPR_pairs_for_this_link"]) for (u, v, ddict) in self._nx_graph.edges(data = True) if ddict["is_virtual"] == True]
+
+        return sum(num_of_EPR_pairs_per_link)
 
     ### public methods:
 
@@ -456,7 +613,8 @@ class QONgraph:
         self.common_random = CommonRandom(self.config.random_params.seed)
         self._nx_graph = self._import_graph()
         self._initialize_graph()
-        # self._gen_demands()
+        self.demands = [self._gen_demands()] # TODO: run multiple times e.g 200 to get many demand matrices to average out later
+        self.process_demands()
 
     def save_graph(self, filename="graph.png"):
         self._draw_graph(action='save', filename=filename)
