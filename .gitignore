@@ -1,11 +1,5 @@
 .vscode/
 __pycache__/
-.DS_Store
-data/.DS_Store
-lib/__pycache__/
-lib/.DS_Store
-graph.png
 tmp/
 venv
-tmgen
-archive
+.DS_Store/
