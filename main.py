@@ -23,13 +23,13 @@ import lower_level_fns
 ns.util.simtools.set_random_state(seed=0)
 ns.qubits.qformalism.set_qstate_formalism(ns.qubits.qformalism.QFormalism.KET)
 
-tmp_qubit_teleported_info = []
+# tmp_qubit_teleported_info = []
 
 class config:
     num_of_qubits_per_memory = 4
     # connections_length = 4e-3
     connections_length = 20
-    channel_loss_p_loss_init = 0.42#0.83 
+    channel_loss_p_loss_init = 0.2 
     channel_loss_p_loss_length = 0#0.2
 
 class MyNode(ns.nodes.Node):
@@ -299,8 +299,6 @@ class ExternalPhase(NodeProtocol):
                     neighbour_port = f"{self.node.name}<->{n}"
                     self.node.ports[neighbour_port].tx_output(q2) # send the other one to the neighbour
                     break
-    
-    
 
 class SwapProtocol(NodeProtocol):
     def __init__(self, node, path):
@@ -379,8 +377,14 @@ class DstProtocol(NodeProtocol):
             shared_eprbit = self.node.qmemory.mem_positions[self.last_repeater_node_mem_pos].get_qubit(remove=True, skip_noise=True)
             teleported_qubit = lower_level_fns.correction(m1, m2, shared_eprbit)
 
-            tmp_qubit_teleported_info.append("Destination node received the following qbit:")
-            tmp_qubit_teleported_info.append(teleported_qubit.qstate.qrepr)
+            # tmp_qubit_teleported_info = []
+            # tmp_qubit_teleported_info.append("Destination node received the following qbit:")
+            # # tmp_qubit_teleported_info.append(teleported_qubit.qstate.qrepr)
+            # tmp_qubit_teleported_info.append(ns.qubits.reduced_dm([teleported_qubit]))
+            # tmp_qubit_teleported_info.append(teleported_qubit)
+
+            fidelity = ns.qubits.fidelity(teleported_qubit, ns.y0, squared=True)
+            print('fidelity:', fidelity)
 
             break
 
@@ -418,65 +422,92 @@ def main() -> None:
         'n15': ['n14', 'n11', 'n16'],
         'n16': ['n15', 'n12'],
     }
+    
+    data_ebits_per_timeslot = []
 
-    network = Network(network_graph_grid)
+    total_timeslots = 10
+    for timeslot in range(total_timeslots):
+        print(f"timeslot {timeslot+1} out of {total_timeslots}")
+        ns.sim_reset()
+        
+        network = Network(network_graph_grid)
 
-    # qubits = ns.qubits.create_qubits(1)
-    # alice_protocol = MyProtocol(network.nodes['n10'], qubit=qubits[0])
-    # n11_protocol = MyProtocol(network.nodes['n11'], qubit=qubits[0])
+        # qubits = ns.qubits.create_qubits(1)
+        # alice_protocol = MyProtocol(network.nodes['n10'], qubit=qubits[0])
+        # n11_protocol = MyProtocol(network.nodes['n11'], qubit=qubits[0])
 
-    # alice_protocol.start()
-    # n11_protocol.start()
-    # run_stats = ns.sim_run(duration=300)
-    # print(run_stats)
+        # alice_protocol.start()
+        # n11_protocol.start()
+        # run_stats = ns.sim_run(duration=300)
+        # print(run_stats)
 
-    print('Start of external phase protocols')
-    external_phase = []
-    for n in network.nodes_names:
-        external_phase.append(ExternalPhase(network.nodes[n]))
-    for ep in external_phase:
-        ep.start()
-    run_stats = ns.sim_run(duration=300)
-    print(run_stats)
-    print('End of external phase protocols')
+        print('Start of external phase protocols')
+        external_phase = []
+        for n in network.nodes_names:
+            external_phase.append(ExternalPhase(network.nodes[n]))
+        for ep in external_phase:
+            ep.start()
+        run_stats = ns.sim_run()
+        # print(run_stats)
+        print('End of external phase protocols')
 
-    network.draw_nx_graph()
-    # internal phase:
-    # ns.sim_reset()
-    print('Start of swapping protocols / internal phase (partial)')
-    src_node_name = 'n10'
-    dst_node_name = 'n4'
-    shortest_paths = network.shortest_src_dst_paths(src = src_node_name, dst = dst_node_name, net_graph=network.ext_phase_subgraph())
-    swap_protocols = []
-    for p in shortest_paths:
-        nodes_on_path = p[1:-1] # excluding src and dst as they do not perform swapping
-        for n in nodes_on_path:
-            swap_protocols.append(SwapProtocol(network.nodes[n], p))
-    for sp in swap_protocols:
-        sp.start()
-    run_stats = ns.sim_run(duration=300)
-    print(run_stats)
-    print('End of swapping protocols')
+        network.draw_nx_graph()
+        # internal phase:
+        # ns.sim_reset()
+        print('Start of swapping protocols / internal phase (partial)')
+        src_node_name = 'n10'
+        dst_node_name = 'n4'
+        shortest_paths = network.shortest_src_dst_paths(src = src_node_name, dst = dst_node_name, net_graph=network.ext_phase_subgraph())
+        if shortest_paths == []:
+            print('no e2e paths possible in this timeslot. End of protocols for this timeslot')
+            data_ebits_per_timeslot.append(0)
+        else:
+            swap_protocols = []
+            p_count = -1
+            for p in shortest_paths:
+                p_count += 1
+                nodes_on_path = p[1:-1] # excluding src and dst as they do not perform swapping
+                swap_protocols.append([])
+                for n in nodes_on_path:
+                    swap_protocols[p_count].append(SwapProtocol(network.nodes[n], p))    
+                for sp in swap_protocols[p_count]:
+                    sp.start()
+            run_stats = ns.sim_run()
+            # print(run_stats)
+            print('End of swapping protocols')
+            
+            data_ebits_per_timeslot.append(len(shortest_paths))
 
-    print('Start of teleportation protocols')
-    # qbit_to_send = create_qubits(1)[0]
-    qbit_to_send = create_qubits(1, no_state=True)[0]
-    state_assigned = assign_qstate(qubits=[qbit_to_send], qrepr=np.array([0.5, 0.5]))
-    src_protocol = SrcProtocol(network.nodes[src_node_name], dst_node_name, shortest_paths[0][1], qbit_to_send)
-    dst_protocol = DstProtocol(network.nodes[dst_node_name], src_node_name, shortest_paths[0][-2])
-    src_protocol.start()
-    dst_protocol.start()
-    run_stats = ns.sim_run(duration=300)
-    print(run_stats)
-    print('End of teleportation protocols')
+            print('Start of teleportation protocols')
+            for p in range(len(shortest_paths)):
+                print(f'teleporation on path # {p+1} out of {len(shortest_paths)}')
+                # qbit_to_send = create_qubits(1, no_state=True)[0]
+                # state_assigned = assign_qstate(qubits=[qbit_to_send], qrepr=np.array([0.5, 0.5]))
+                qbit_to_send = create_qubits(1)[0]
+                qbit_to_send = lower_level_fns.temp_assign_state(qbit_to_send)
+                src_protocol = SrcProtocol(network.nodes[src_node_name], dst_node_name, shortest_paths[p][1], qbit_to_send)
+                dst_protocol = DstProtocol(network.nodes[dst_node_name], src_node_name, shortest_paths[p][-2])
+                src_protocol.start()
+                dst_protocol.start()
+                run_stats = ns.sim_run()
+                # print(run_stats)
+
+                # print()
+                # print(tmp_qubit_teleported_info[0])
+                # print(tmp_qubit_teleported_info[1])
+                
+                # print('\nshould be:')
+                # # print(state_assigned.qrepr)
+                # print(ns.qubits.reduced_dm([qbit_to_send]))
+
+                # fidelity = ns.qubits.fidelity(tmp_qubit_teleported_info[2], ns.y0, squared=True)
+                # print('fidelity:', fidelity)
+
+            print('End of teleportation protocols')
 
     print()
-    print(tmp_qubit_teleported_info[0])
-    print(tmp_qubit_teleported_info[1])
-    
-    print('\nshould be:')
-    print(state_assigned.qrepr)
-
+    for i in range(total_timeslots):
+        print(f'ts = {i+1}, ebits = {data_ebits_per_timeslot[i]}')
     halt = '' # temporary line to use as a breakpoint during debugging.
 
 if __name__ == '__main__':
