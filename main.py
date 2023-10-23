@@ -16,11 +16,13 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
-
+import random
 import constants as consts
 import lower_level_fns
 
-ns.util.simtools.set_random_state(seed=0)
+seed = 0
+ns.util.simtools.set_random_state(seed=seed)
+random.seed(seed)
 ns.qubits.qformalism.set_qstate_formalism(ns.qubits.qformalism.QFormalism.KET)
 
 # tmp_qubit_teleported_info = []
@@ -29,8 +31,8 @@ class config:
     num_of_qubits_per_memory = 4
     # connections_length = 4e-3
     connections_length = 20
-    channel_loss_p_loss_init = 0.2 
-    channel_loss_p_loss_length = 0#0.2
+    channel_loss_p_loss_init = 1-0.6 #0.2 
+    channel_loss_p_loss_length = 0 #0.2
 
 class MyNode(ns.nodes.Node):
     def __init__(self, name) -> None:
@@ -424,8 +426,24 @@ def main() -> None:
     }
     
     data_ebits_per_timeslot = []
-
     total_timeslots = 10
+    q = 1
+    # x = no. of hops
+    x = 2
+    # x = 4
+    # x = 6
+
+    if x == 2:
+        src_node_name = 'n7'
+        dst_node_name = 'n4'
+    elif x == 4:
+        src_node_name = 'n10'
+        dst_node_name = 'n4'
+    elif x == 6:
+        src_node_name = 'n13'
+        dst_node_name = 'n4'
+
+    
     for timeslot in range(total_timeslots):
         print(f"timeslot {timeslot+1} out of {total_timeslots}")
         ns.sim_reset()
@@ -455,8 +473,7 @@ def main() -> None:
         # internal phase:
         # ns.sim_reset()
         print('Start of swapping protocols / internal phase (partial)')
-        src_node_name = 'n10'
-        dst_node_name = 'n4'
+        
         shortest_paths = network.shortest_src_dst_paths(src = src_node_name, dst = dst_node_name, net_graph=network.ext_phase_subgraph())
         if shortest_paths == []:
             print('no e2e paths possible in this timeslot. End of protocols for this timeslot')
@@ -481,27 +498,41 @@ def main() -> None:
             print('Start of teleportation protocols')
             for p in range(len(shortest_paths)):
                 print(f'teleporation on path # {p+1} out of {len(shortest_paths)}')
-                # qbit_to_send = create_qubits(1, no_state=True)[0]
-                # state_assigned = assign_qstate(qubits=[qbit_to_send], qrepr=np.array([0.5, 0.5]))
-                qbit_to_send = create_qubits(1)[0]
-                qbit_to_send = lower_level_fns.temp_assign_state(qbit_to_send)
-                src_protocol = SrcProtocol(network.nodes[src_node_name], dst_node_name, shortest_paths[p][1], qbit_to_send)
-                dst_protocol = DstProtocol(network.nodes[dst_node_name], src_node_name, shortest_paths[p][-2])
-                src_protocol.start()
-                dst_protocol.start()
-                run_stats = ns.sim_run()
-                # print(run_stats)
-
-                # print()
-                # print(tmp_qubit_teleported_info[0])
-                # print(tmp_qubit_teleported_info[1])
+                rs = []
+                swap_nodes = shortest_paths[p][1:-1]
+                for _ in range(len(swap_nodes)):
+                    rs.append(random.random())
+                proceed = True
+                for r in rs:
+                    if r > q:
+                        # internal link failure
+                        proceed = False
+                        data_ebits_per_timeslot[-1] = 0
                 
-                # print('\nshould be:')
-                # # print(state_assigned.qrepr)
-                # print(ns.qubits.reduced_dm([qbit_to_send]))
+                if proceed:
+                    # qbit_to_send = create_qubits(1, no_state=True)[0]
+                    # state_assigned = assign_qstate(qubits=[qbit_to_send], qrepr=np.array([0.5, 0.5]))
+                    qbit_to_send = create_qubits(1)[0]
+                    qbit_to_send = lower_level_fns.temp_assign_state(qbit_to_send)
+                    src_protocol = SrcProtocol(network.nodes[src_node_name], dst_node_name, shortest_paths[p][1], qbit_to_send)
+                    dst_protocol = DstProtocol(network.nodes[dst_node_name], src_node_name, shortest_paths[p][-2])
+                    src_protocol.start()
+                    dst_protocol.start()
+                    run_stats = ns.sim_run()
+                    # print(run_stats)
 
-                # fidelity = ns.qubits.fidelity(tmp_qubit_teleported_info[2], ns.y0, squared=True)
-                # print('fidelity:', fidelity)
+                    # print()
+                    # print(tmp_qubit_teleported_info[0])
+                    # print(tmp_qubit_teleported_info[1])
+                    
+                    # print('\nshould be:')
+                    # # print(state_assigned.qrepr)
+                    # print(ns.qubits.reduced_dm([qbit_to_send]))
+
+                    # fidelity = ns.qubits.fidelity(tmp_qubit_teleported_info[2], ns.y0, squared=True)
+                    # print('fidelity:', fidelity)
+                else:
+                    print('internal link failure')
 
             print('End of teleportation protocols')
 
