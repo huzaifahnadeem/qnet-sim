@@ -11,7 +11,7 @@ from netsquid.qubits.state_sampler import StateSampler
 import netsquid.qubits.ketstates as ks
 from netsquid.components.models.qerrormodels import FibreLossModel
 from netsquid.qubits.qubitapi import create_qubits, assign_qstate
-from pydynaa import EventExpression
+# from pydynaa import EventExpression
 import networkx as nx
 import matplotlib.pyplot as plt
 import copy
@@ -20,7 +20,7 @@ import random
 import constants as consts
 import lower_level_fns
 
-seed = 0
+seed = 4
 ns.util.simtools.set_random_state(seed=seed)
 random.seed(seed)
 ns.qubits.qformalism.set_qstate_formalism(ns.qubits.qformalism.QFormalism.KET)
@@ -31,7 +31,7 @@ class config:
     num_of_qubits_per_memory = 4
     # connections_length = 4e-3
     connections_length = 20
-    channel_loss_p_loss_init = 1-0.6 #0.2 
+    channel_loss_p_loss_init = 1-0.95 #0.2 
     channel_loss_p_loss_length = 0 #0.2
 
 class MyNode(ns.nodes.Node):
@@ -429,9 +429,9 @@ def main() -> None:
     total_timeslots = 10
     q = 1
     # x = no. of hops
-    x = 2
+    # x = 2
     # x = 4
-    # x = 6
+    x = 6
 
     if x == 2:
         src_node_name = 'n7'
@@ -538,7 +538,8 @@ def main() -> None:
 
     print()
     for i in range(total_timeslots):
-        print(f'ts = {i+1}, ebits = {data_ebits_per_timeslot[i]}')
+        # print(f'ts = {i+1}, ebits = {data_ebits_per_timeslot[i]}')
+        print(f'{data_ebits_per_timeslot[i]}')
     halt = '' # temporary line to use as a breakpoint during debugging.
 
 if __name__ == '__main__':
