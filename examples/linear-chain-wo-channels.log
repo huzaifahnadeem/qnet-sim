@@ -261,7 +261,7 @@ INFO:root:
 Simulation summary
 ==================
 
-Elapsed wallclock time: 0:00:00.058375
+Elapsed wallclock time: 0:00:00.049507
 Elapsed simulation time: 5.65e+02 [ns]
 Triggered events: 93
 Handled callbacks: 141
