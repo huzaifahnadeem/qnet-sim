@@ -8,33 +8,35 @@ import copy
 
 class config:
     seed = 0
-    num_of_timeslots = 10
-
+    num_of_timeslots = 1
     time_slot_length = 100
+
     ebits_ready_delay = 10 # how long it takes for the ebits to be ready after you initiate the generation process
-    internal_phase_delay = 30
-    ext_phase_end_delay = 20
+    ebits_across_channel_delay = 10
+    ext_phase_end_delay = 5
+
+    internal_phase_delay = 10
     corrections_delay = 5
 
-#     probability_ebit_lost_over_channel  = 0 # p parameter
+    probability_ebit_lost_over_channel = 0 # p parameter
 
 ns.set_random_state(seed=config.seed)
 random.seed(config.seed)
 
-# def ebit_arrives_across_channel():
-#     # TODO: test this function
-#     arrives = True
-#     r = random.randint(1, 100)
-#     if r <= config.probability_ebit_lost_over_channel:
-#         arrives = False
+def ebit_arrives_across_channel():
+    arrives = True
+    r = random.randint(1, 100)
+    if r <= config.probability_ebit_lost_over_channel:
+        arrives = False
     
-#     return arrives
+    return arrives
 
 class NodeEntity(pydynaa.Entity):
     external_phase_done_evtype = pydynaa.EventType("EXT_PHASE_DONE", "External Phase complete (epr pair generation + sending to neighbour)")
     ebits_ready_evtype = pydynaa.EventType("EPR_PAIR_READY", "Entangled qubits are ready.")
     swap_operation_done_evtype = pydynaa.EventType("SWAP_DONE", "This repeater node has performed the swap operation.")
     corrections_ready_evtype = pydynaa.EventType("CORRECTION_READY", "Corrections are ready.")
+    done_talking_to_neighbour_end_of_ext_phase_evtype = pydynaa.EventType("TALKED TO NEIGHBOUR", "Talked to one of the neighbours right before the end of external phase")
 
     def __init__(self, name, traffic_mat, net_graph):
         self.name = name
@@ -49,9 +51,17 @@ class NodeEntity(pydynaa.Entity):
         self.bigger_id_neighbours = [n for n in self.neighbours if int(n[1:]) > int(self.name[1:])]
         self.ebits_memory = {}
         self.ebits_to_send = {}
+        self.ebits_received = {}
         self.data_qbit = None
         self.swap_data = {}
         self.corrections = None
+        self.neighbours_comm_events = {}
+        for n in self.neighbours:
+            self.neighbours_comm_events[n] = {
+                'received_ebit': pydynaa.EventType("RECEIVED EBIT", "Received the epr originating from this neighbour"),
+                'not_received_ebit': pydynaa.EventType("NOT RECEIVED EBIT", "Did not received the epr originating from this neighbour"),
+                }
+        temp = 1
 
     def set_controller_entity(self, controller_entity):
         self.controller_entity = controller_entity
@@ -90,35 +100,31 @@ class NodeEntity(pydynaa.Entity):
         return role
 
     def _external_phase(self):
-        # TODO: # both nodes across an edge attempt to generate an epr pair to share -- just like the paper mentioned.
-        # currently, larger neighbour prepares qubits
         # generate a pair of ebits for each neighbour
-        for n in self.smaller_id_neighbours:
+        epr_neighbours = self.neighbours
+        for n in epr_neighbours:
             q1, q2 = self._gen_entangled_qubits()
             self.ebits_to_send[n] = q1
             self.ebits_memory[n] = q2
 
         # signal to all that ebits are ready
-        logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: has ebits ready for {self.smaller_id_neighbours}")
-        for n in self.smaller_id_neighbours:
+        logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: has ebits ready for {epr_neighbours}")
+        for n in epr_neighbours:
             self._schedule_after(config.ebits_ready_delay, NodeEntity.ebits_ready_evtype)
         
         # receive any prepared ebits that your neighbours have ready for you
-        if self.bigger_id_neighbours != []:
-            ebit_ready_events = [
-                pydynaa.EventExpression(
-                        source = self.node_entities[n],
-                        event_type = NodeEntity.ebits_ready_evtype,
-                    )
-                for n in self.bigger_id_neighbours
-            ]
-            wait_for_bigger_neighbours = reduce(lambda x, y: x & y, ebit_ready_events)
-            self._wait_once(
-                expression = wait_for_bigger_neighbours,
-                handler = pydynaa.EventHandler(self._receive_ebits),
-            )
-        else:
-            self._signal_end_of_ext_phase()
+        ebit_ready_events = [
+            pydynaa.EventExpression(
+                    source = self.node_entities[n],
+                    event_type = NodeEntity.ebits_ready_evtype,
+                )
+            for n in epr_neighbours
+        ]
+        wait_for_neighbours = reduce(lambda x, y: x & y, ebit_ready_events)
+        self._wait_once(
+            expression = wait_for_neighbours,
+            handler = pydynaa.EventHandler(self._receive_ebits),
+        )
 
     def _gen_entangled_qubits(self):
         q1, q2 = ns.qubits.create_qubits(2)
@@ -128,17 +134,87 @@ class NodeEntity(pydynaa.Entity):
         return q1, q2
 
     def _receive_ebits(self, _):
-        for n in self.bigger_id_neighbours:
+        for n in self.neighbours:
             ebit = self.node_entities[n].ebits_to_send[self.name]
-            self.ebits_memory[n] = ebit
-            logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: received ebit from {n}.")
+            if ebit_arrives_across_channel():
+                self.ebits_received[n] = ebit
+                logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: received ebit from {n}.")
+                self._schedule_after(config.ebits_across_channel_delay, self.neighbours_comm_events[n]['received_ebit'])
+            else:
+                self.ebits_received[n] = None
+                logging.info(f" sim_time = {ns.sim_time():.1f}: ebit from {n} to {self.name} got lost over the channel.")
+                self._schedule_after(config.ebits_across_channel_delay, self.neighbours_comm_events[n]['not_received_ebit'])
         
-        self._signal_end_of_ext_phase()
+        # if applicable, decide which ebit to use (the one you created, or the one you received from the neighbour)
+        # find out which of the neighbours got your ebit
+        for n in self.neighbours:
+            self._wait_once(
+                    entity = self.node_entities[n],
+                    event_type = self.node_entities[n].neighbours_comm_events[self.name]['received_ebit'],
+                    handler = pydynaa.EventHandler(self._neighbour_received_ebit),
+                )
+            self._wait_once(
+                    entity = self.node_entities[n],
+                    event_type = self.node_entities[n].neighbours_comm_events[self.name]['not_received_ebit'],
+                    handler = pydynaa.EventHandler(self._neighbour_received_ebit),
+                )
+        
+        sub_events_for_end_of_ext_ph = [
+            pydynaa.EventExpression(
+                    source = self.node_entities[n],
+                    event_type = NodeEntity.done_talking_to_neighbour_end_of_ext_phase_evtype,
+                )
+            for n in self.neighbours
+        ]
+        wait_for_end_of_ext_phase_subevents = reduce(lambda x, y: x & y, sub_events_for_end_of_ext_ph)
+        self._wait_once(
+            expression = wait_for_end_of_ext_phase_subevents,
+            handler = pydynaa.ExpressionHandler(self._signal_end_of_ext_phase),
+        )
 
-    def _signal_end_of_ext_phase(self):
-        # TODO: what if the ebit does reach you. There should be some kind of a timeout.
+    def _neighbour_received_ebit(self, event):
+        event_name = event.type.name # = "RECEIVED EBIT" or "NOT RECEIVED EBIT"
+        # TODO ? unschedule the corresponding "NOT RECEIVED EBIT" event if this is "RECEIVED EBIT" (or the other way around)
+        neighbour_name = event.source.name
+
+        if event_name == "RECEIVED EBIT":
+            neighbour_has_both_ebits = True
+        else:
+            neighbour_has_both_ebits = False
+
+        bigger_id_node_name = neighbour_name if int(neighbour_name[1:]) > int(self.name[1:]) else self.name
+        
+        this_node_has_both_ebits = False
+        if self.ebits_received[neighbour_name] is not None:
+            this_node_has_both_ebits = True
+
+        if this_node_has_both_ebits and neighbour_has_both_ebits:
+            # use bigger id's ebits
+            if bigger_id_node_name == neighbour_name:
+                ebit_to_use = self.ebits_received[bigger_id_node_name]
+            else:
+                ebit_to_use = self.ebits_memory[neighbour_name]
+            self.ebits_memory[neighbour_name] = ebit_to_use
+            logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: will use ebit generated by {bigger_id_node_name} for comm. with {neighbour_name}.")
+        elif (not this_node_has_both_ebits) and neighbour_has_both_ebits:
+            # use own ebit:
+            ebit_to_use = self.ebits_memory[neighbour_name]
+            self.ebits_memory[neighbour_name] = ebit_to_use
+            logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: will use ebit generated by {self.name} for comm. with {neighbour_name}.")
+        elif this_node_has_both_ebits and (not neighbour_has_both_ebits):
+            # use neighbour's ebit
+            ebit_to_use = self.ebits_received[neighbour_name]
+            self.ebits_memory[neighbour_name] = ebit_to_use
+            logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: will use ebit generated by {neighbour_name} for comm. with {neighbour_name}.")
+        else: # case: (not this_node_has_both_ebits) and (not neighbour_has_both_ebits):
+            # nothing can be done
+            logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: no ebit available for comm. with {neighbour_name}.")
+        
+        self._schedule_after(config.ext_phase_end_delay, NodeEntity.done_talking_to_neighbour_end_of_ext_phase_evtype)
+
+    def _signal_end_of_ext_phase(self, _):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: signals end of external phase.")
-        self._schedule_after(config.ext_phase_end_delay, NodeEntity.external_phase_done_evtype)
+        self._schedule_now(NodeEntity.external_phase_done_evtype)
 
     def _internal_phase(self, _):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: starting internal phase procedure.")
