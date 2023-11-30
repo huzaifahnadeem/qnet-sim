@@ -8,7 +8,7 @@ import copy
 
 class config:
     seed = 0
-    num_of_timeslots = 1
+    num_of_timeslots = 5
     time_slot_length = 100
 
     ebits_ready_delay = 10 # how long it takes for the ebits to be ready after you initiate the generation process
@@ -18,7 +18,7 @@ class config:
     internal_phase_delay = 10
     corrections_delay = 5
 
-    probability_ebit_lost_over_channel = 0 # p parameter
+    probability_ebit_lost_over_channel = 50 # p parameter
 
 ns.set_random_state(seed=config.seed)
 random.seed(config.seed)
@@ -209,6 +209,10 @@ class NodeEntity(pydynaa.Entity):
         else: # case: (not this_node_has_both_ebits) and (not neighbour_has_both_ebits):
             # nothing can be done
             logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: no ebit available for comm. with {neighbour_name}.")
+            # if you are the bigger id node, you are responsible to let the controller entity know about this. (using bigger id node to avoid two messages to the controller entity for each edge)
+            if bigger_id_node_name == self.name:
+                edge_tuple = (self.name, neighbour_name)
+                self.controller_entity.log_unsuccessful_ebit_share(edge_tuple) # let the controller entity know about this.
         
         self._schedule_after(config.ext_phase_end_delay, NodeEntity.done_talking_to_neighbour_end_of_ext_phase_evtype)
 
@@ -217,6 +221,10 @@ class NodeEntity(pydynaa.Entity):
         self._schedule_now(NodeEntity.external_phase_done_evtype)
 
     def _internal_phase(self, _):
+        if self.controller_entity.skip_to_next_ts:
+            # logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: skipping internal phase procedure (since no path possible in this ts).")
+            return
+        
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: starting internal phase procedure.")
         self.e2e_path_this_ts = self.controller_entity.e2e_path_this_ts
         if self.role == 'src':
@@ -403,6 +411,8 @@ class ControllerEntity(pydynaa.Entity):
         self.ts_length = config.time_slot_length
         self.curr_ts = 0
         self.e2e_path_this_ts = None
+        self.unsuccessful_ebit_share_log = []
+        self.skip_to_next_ts = False # if no path possible for internal phase, then this becomes true so the nodes skip the internal phase of the current time slot
         self._wait(
                 event_type = ControllerEntity._init_new_ts_evtype, # Only events of the given event_type will match the filter.
                 entity = self, # Only events from this entity will match the filter
@@ -430,6 +440,8 @@ class ControllerEntity(pydynaa.Entity):
     
     def _new_ts(self, _):
         self.curr_ts += 1
+        self.unsuccessful_ebit_share_log = [] # reset to empty list of edges
+        self.skip_to_next_ts = False # reset to False
         logging.info(f" sim_time = {ns.sim_time():.1f}: ==== start of ts # {self.curr_ts} ==== ")
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: ts # {self.curr_ts} begins.")
         self._schedule_now(ControllerEntity.new_ts_evtype)
@@ -458,15 +470,25 @@ class ControllerEntity(pydynaa.Entity):
     def _ext_phase_done(self, _):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: ext phase done.")
         self.e2e_path_this_ts = self._e2e_path()
+        if self.e2e_path_this_ts is None: # i.e. no possible path between src and destination:
+            logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: No path possible from src to dst in this timeslot. All nodes moving to next ts.")
+            self.skip_to_next_ts = True
         self._schedule_after(config.internal_phase_delay, ControllerEntity.start_internal_phase_evtype)
 
     def _e2e_path(self):
-        # TODO: edit after introducting ebit loss over channels. (copy the nx graph and remove edges for each unsuccessful ebit attempt across the edge)
         src = self.traffic_matrix[self.curr_ts]['src']
         dst = self.traffic_matrix[self.curr_ts]['dst']
-        nx_graph = self.nx_graph
-        paths = self._shortest_src_dst_paths(src, dst, nx_graph)
-        return paths[0]
+        nx_sub_graph = self._subgraph_after_ext_phase(self.nx_graph)
+        paths = self._shortest_src_dst_paths(src, dst, nx_sub_graph)
+        if paths == []: # i.e. no possible path between src and destination:
+            return None
+        return paths[0] # return the shortest of all shortest paths (index 0)
+
+    def _subgraph_after_ext_phase(self, nx_graph_original):
+        nx_graph = copy.deepcopy(nx_graph_original)
+        edges_list = self.unsuccessful_ebit_share_log
+        nx_graph.remove_edges_from(edges_list)
+        return nx_graph
 
     def _shortest_src_dst_paths(self, src, dst, nx_graph_original):
         nx_graph = copy.deepcopy(nx_graph_original)
@@ -484,6 +506,9 @@ class ControllerEntity(pydynaa.Entity):
             nx_graph.remove_edges_from(p_edges)
             paths.append(p)
         return paths
+
+    def log_unsuccessful_ebit_share(self, edge):
+        self.unsuccessful_ebit_share_log.append(edge)
 
 def network_graph_setup():
     # multiple src-destination
