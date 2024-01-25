@@ -1,0 +1,11 @@
+ts,data_qubit_transmitted,hops
+1,success,2
+2,fail,4
+3,success,2
+4,fail,3
+5,fail,3
+6,fail,5
+7,fail,4
+8,fail,6
+9,fail,4
+10,fail,3
