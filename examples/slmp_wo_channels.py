@@ -9,7 +9,7 @@ import argparse
 
 import data_logger as dl
 
-data_logger = dl.DataLogger(labels=['ts', 'data_qubit_transmitted', 'hops'])
+data_logger = dl.DataLogger(labels=['ts', 'data_qubit_transmitted', 'x-hop', 'y-hop'])
 
 class config:
     seed = 0
@@ -30,6 +30,47 @@ class config:
 
 # ns.set_random_state(seed=config.seed)
 # random.seed(config.seed)
+
+def calc_x_sep(n1, n2):
+    num1 = int(n1[1:])
+    num2 = int(n2[1:])
+
+    counter = 1
+    for n in [num1, num2]:
+        if n not in [1, 2, 3, 4]:
+            if n in [13, 14, 15, 16]:
+                n -= 4
+            if n in [9, 10, 11, 12]:
+                n -= 4
+            if n in [5, 6, 7, 8]:
+                n -= 4
+        if counter == 1:
+            num1 = n 
+        else:
+            num2 = n 
+        counter += 1
+    return abs(num1 - num2)
+
+
+def calc_y_sep(n1, n2):
+    num1 = int(n1[1:])
+    num2 = int(n2[1:])
+
+    counter = 1
+    for n in [num1, num2]:
+        if n not in [1, 5, 9, 13]:
+            if n in [4, 8, 12, 16]:
+                n -= 1
+            if n in [3, 7, 11, 15]:
+                n -= 1
+            if n in [2, 6, 10, 14]:
+                n -= 1
+        if counter == 1:
+            num1 = n 
+        else:
+            num2 = n 
+        counter += 1
+    return int(abs((num1 - num2)/4))
 
 def ebit_arrives_across_channel():
     arrives = True
@@ -387,7 +428,7 @@ class NodeEntity(pydynaa.Entity):
         #     handler = pydynaa.EventHandler(self._teleport_data_qubit),
         # )
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: Failed to teleport the data qubit due to a swap failure on path.")
-        data_logger.add_data_point([self.curr_ts, 'fail', self.controller_entity.this_ts_hop_count])
+        data_logger.add_data_point([self.curr_ts, 'fail', self.controller_entity.this_ts_xhop, self.controller_entity.this_ts_yhop])
 
 
     def _prepare_corrections(self, data_qubit, entangled_qubit):
@@ -504,7 +545,7 @@ class NodeEntity(pydynaa.Entity):
         ebit = self.e2e_ebit
         fidelity,_ = self._apply_corrections(ebit, corrections, original_state)
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: qubit state teleported with fidelity = {fidelity:.3f}")
-        data_logger.add_data_point([self.curr_ts, 'success', self.controller_entity.this_ts_hop_count])
+        data_logger.add_data_point([self.curr_ts, 'success', self.controller_entity.this_ts_xhop, self.controller_entity.this_ts_yhop])
 
     # internal phase -> role = repeater:
     def _perform_swaps(self):
@@ -657,7 +698,8 @@ class ControllerEntity(pydynaa.Entity):
         self.e2e_path_this_ts = None
         self.unsuccessful_ebit_share_log = []
         self.skip_to_next_ts = False # if no path possible for internal phase, then this becomes true so the nodes skip the internal phase of the current time slot
-        self.this_ts_hop_count = 0
+        self.this_ts_xhop = 0
+        self.this_ts_yhop = 0
         self._wait(
                 event_type = ControllerEntity._init_new_ts_evtype, # Only events of the given event_type will match the filter.
                 entity = self, # Only events from this entity will match the filter
@@ -717,7 +759,7 @@ class ControllerEntity(pydynaa.Entity):
         self.e2e_path_this_ts = self._e2e_path()
         if self.e2e_path_this_ts is None: # i.e. no possible path between src and destination:
             logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: No path possible from src to dst in this timeslot. All nodes moving to next ts.")
-            data_logger.add_data_point([self.curr_ts, 'fail', self.controller_entity.this_ts_hop_count])
+            data_logger.add_data_point([self.curr_ts, 'fail', self.controller_entity.this_ts_xhop, self.controller_entity.this_ts_yhop])
             self.skip_to_next_ts = True
         self._schedule_after(config.internal_phase_delay, ControllerEntity.start_internal_phase_evtype)
 
@@ -727,9 +769,11 @@ class ControllerEntity(pydynaa.Entity):
         nx_sub_graph = self._subgraph_after_ext_phase(self.nx_graph)
         paths = self._shortest_src_dst_paths(src, dst, nx_sub_graph)
         if paths == []: # i.e. no possible path between src and destination:
-            self.this_ts_hop_count = -1
+            self.this_ts_xhop = -1
+            self.this_ts_yhop = -1
             return None
-        self.this_ts_hop_count = len(paths[0])
+        self.this_ts_xhop = calc_x_sep(src, dst)
+        self.this_ts_yhop = calc_y_sep(src, dst)
         return paths[0] # return the shortest of all shortest paths (index 0)
 
     def _subgraph_after_ext_phase(self, nx_graph_original):
