@@ -11,6 +11,15 @@ import data_logger as dl
 
 data_logger = dl.DataLogger(labels=['ts', 'data_qubit_transmitted', 'x-hop', 'y-hop'])
 
+# possible states that the data qubit can be in (v limited rn will add variety later):
+ket_minus = ns.h1   # ns.h1 = |−⟩  = 1/√(2)*(|0⟩ − |1⟩)
+ket_plus = ns.h0    # ns.h0 = |+⟩  = 1/√(2)*(|0⟩ + |1⟩)
+ket_1_y = ns.y1     # ns.y0 = |1𝑌⟩ = 1/√(2)*(|0⟩ - 𝑖|1⟩)
+ket_0_y = ns.y0     # ns.y0 = |0𝑌⟩ = 1/√(2)*(|0⟩ + 𝑖|1⟩)
+ket_1 = ns.s1       # ns.s1 = |1⟩
+ket_0 = ns.s0       # ns.s0 = |0⟩
+data_qubit_states = [(ket_minus, '|−⟩'), (ket_plus, '|+⟩'), (ket_1_y, '|1Y⟩'), (ket_0_y, '|1Y⟩'), (ket_1, '|1⟩'), (ket_0, '|0⟩')] # tuple index 0 = state vector, index 1 = string for printing purposes
+
 class config:
     seed = 0
     num_of_timeslots = 5
@@ -124,6 +133,9 @@ class NodeEntity(pydynaa.Entity):
         #         'not_received_ebit': pydynaa.EventType("NOT RECEIVED EBIT", "Did not received the epr originating from this neighbour"),
         #         }
 
+        self.state_index = 0 # index variable that src uses to figure out what to send next
+        self.dst_expected_state = None # src populates this for the dst node. dst node uses this to compute the fidelity
+
         self.neighbours_comm_events = {}
         for n in self.neighbours:
             self.neighbours_comm_events[n] = {
@@ -136,7 +148,6 @@ class NodeEntity(pydynaa.Entity):
             'swap': '',
             'neighbouring-src-dst-case': False,
         }
-
 
     def set_controller_entity(self, controller_entity):
         self.controller_entity = controller_entity
@@ -153,7 +164,8 @@ class NodeEntity(pydynaa.Entity):
             )
     
     def reset(self):
-        # reset the following fields:
+        # reset the following fields/ vars:
+        self.dst_expected_state = None
         self.event_msgs = {
             'swap': '',
             'neighbouring-src-dst-case': False,
@@ -358,7 +370,7 @@ class NodeEntity(pydynaa.Entity):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: role is '{self.role}'.")
         
         # wait for swap operations to finish:
-        repeater_nodes_on_path = self.e2e_path_this_ts[1:-1]
+        repeater_nodes_on_path = self.e2e_path_this_ts[0][1:-1] # index 0 has the shortest path
         
         if repeater_nodes_on_path == []:
             self.event_msgs['neighbouring-src-dst-case'] = True
@@ -387,11 +399,23 @@ class NodeEntity(pydynaa.Entity):
         def prepare_qubit_send_corrections(self=self):
             # prepare the data qubit
             self.data_qbit,  = ns.qubits.create_qubits(1, no_state=True)
-            data_qubit_state = self.traffic_matrix[self.curr_ts]['data_qubit_state']
+            # data_qubit_state = self.traffic_matrix[self.curr_ts]['data_qubit_state']
+            
+            possible_states = copy.deepcopy(data_qubit_states)
+            random.shuffle(possible_states)
+            state_vector_idx = 0
+            state_str_idx = 1
+            data_qubit_state = possible_states[self.state_index][state_vector_idx]
+            
+            dst_node_entity = self.node_entities[self.traffic_matrix[self.curr_ts]['dst']]
+            dst_node_entity.dst_expected_state = data_qubit_state
+
+            logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: data qubit state = {possible_states[state_vector_idx][state_str_idx]}")
+
             ns.qubits.assign_qstate([self.data_qbit], data_qubit_state)
             
             # corrections:
-            next_node_on_path = self.e2e_path_this_ts[1] # next node with the order: src -> dst
+            next_node_on_path = self.e2e_path_this_ts[0][1] # next node with the order: src -> dst. the first index 0 is to get the shortest path
             ebit = self.ebits_memory[next_node_on_path]
             m0, m1 = self._prepare_corrections(self.data_qbit, ebit)
             self.corrections = (m0, m1)
@@ -446,7 +470,7 @@ class NodeEntity(pydynaa.Entity):
         src_node_entity = self.node_entities[src_node_name]
 
         # first perform the steps to generate e2e ebit during the swapping process:
-        prev_node_on_path = self.e2e_path_this_ts[-2]
+        prev_node_on_path = self.e2e_path_this_ts[0][-2] # the first index 0 is to get the shortest path
         prev_repeater_node_on_path = prev_node_on_path if prev_node_on_path != src_node_name else None
         if prev_repeater_node_on_path is not None: # if == None, then the source is directly on the left. in that case, no swapping required so just move to the next step.
             # wait for the left-side neighbour on path to generate the corrections. When done, apply corrections to get the e2e ebit. then proceed to next step
@@ -469,7 +493,7 @@ class NodeEntity(pydynaa.Entity):
             )
         else:
             # case where the source is your direct neighbour:
-            prev_node_on_path = self.e2e_path_this_ts[-2]
+            prev_node_on_path = self.e2e_path_this_ts[0][-2] # the first index 0 is to get the shortest path
             e2e_ebit = self.ebits_memory[prev_node_on_path]
             self.e2e_ebit = e2e_ebit
 
@@ -540,24 +564,26 @@ class NodeEntity(pydynaa.Entity):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: ready to receive the data qubit from the source ({src_node_name})")
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: got the signal that corrections are ready at {src_node_name}.")
         src_node_entity = self.node_entities[src_node_name]
-        original_state = self.traffic_matrix[self.curr_ts]['data_qubit_state']
+        # original_state = self.traffic_matrix[self.curr_ts]['data_qubit_state']
+        original_state = self.dst_expected_state
         corrections = src_node_entity.corrections
         ebit = self.e2e_ebit
         fidelity,_ = self._apply_corrections(ebit, corrections, original_state)
+        self.dst_expected_state = None # reset var
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: qubit state teleported with fidelity = {fidelity:.3f}")
         data_logger.add_data_point([self.curr_ts, 'success', self.controller_entity.this_ts_xhop, self.controller_entity.this_ts_yhop])
 
     # internal phase -> role = repeater:
     def _perform_swaps(self):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: role is '{self.role}'.")
-        if self.name not in self.e2e_path_this_ts:
+        if self.name not in self.e2e_path_this_ts[0]: # the index 0 is to get the shortest path
             logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: is not on the path. so this node is done in this ts")
         else:
         # try:
-            my_pos_on_path = self.e2e_path_this_ts.index(self.name)
+            my_pos_on_path = self.e2e_path_this_ts[0].index(self.name) # the index 0 is to get the shortest path
             src_node_name = self.traffic_matrix[self.curr_ts]['src']
-            prev_node_on_path = self.e2e_path_this_ts[my_pos_on_path - 1]
-            next_node_on_path = self.e2e_path_this_ts[my_pos_on_path + 1]
+            prev_node_on_path = self.e2e_path_this_ts[0][my_pos_on_path - 1] # the first index 0 is to get the shortest path
+            next_node_on_path = self.e2e_path_this_ts[0][my_pos_on_path + 1] # the first index 0 is to get the shortest path
             prev_repeater_node_on_path = prev_node_on_path if prev_node_on_path != src_node_name else None
             next_repeater_node_on_path = next_node_on_path
 
@@ -650,7 +676,7 @@ class NodeEntity(pydynaa.Entity):
         # # dismiss waiting on the other event (case swap done):
         # if self.role == 'dst':
         src_node_name = self.traffic_matrix[self.curr_ts]['src']
-        prev_node_on_path = self.e2e_path_this_ts[-2]
+        prev_node_on_path = self.e2e_path_this_ts[0][-2] # the first index 0 is to get the shortest path
         prev_repeater_node_on_path = prev_node_on_path if prev_node_on_path != src_node_name else None
         left_side_repeater_entity = self.node_entities[prev_repeater_node_on_path]
         #     self._dismiss(
@@ -774,7 +800,8 @@ class ControllerEntity(pydynaa.Entity):
             return None
         self.this_ts_xhop = calc_x_sep(src, dst)
         self.this_ts_yhop = calc_y_sep(src, dst)
-        return paths[0] # return the shortest of all shortest paths (index 0)
+        # return paths[0] # return the shortest of all shortest paths (index 0)
+        return paths
 
     def _subgraph_after_ext_phase(self, nx_graph_original):
         nx_graph = copy.deepcopy(nx_graph_original)
@@ -782,21 +809,32 @@ class ControllerEntity(pydynaa.Entity):
         nx_graph.remove_edges_from(edges_list)
         return nx_graph
 
+    # the following function might not be the best way to get disjoint edge paths. So writing a new variant (below this commented function)
+    # def _shortest_src_dst_paths(self, src, dst, nx_graph_original):
+    #     nx_graph = copy.deepcopy(nx_graph_original)
+    #     paths = []
+    #     while True:
+    #         try:
+    #             p = nx.shortest_path(nx_graph, src, dst, weight=None, method='dijkstra')
+    #         except nx.exception.NetworkXNoPath: # stop if not further paths
+    #             break
+    #         p_edges = []
+    #         for i in range(1, len(p)):
+    #             u = p[i-1]
+    #             v = p[i]
+    #             p_edges.append((u,v))
+    #         nx_graph.remove_edges_from(p_edges)
+    #         paths.append(p)
+    #     return paths
+    
     def _shortest_src_dst_paths(self, src, dst, nx_graph_original):
         nx_graph = copy.deepcopy(nx_graph_original)
         paths = []
-        while True:
-            try:
-                p = nx.shortest_path(nx_graph, src, dst, weight=None, method='dijkstra')
-            except nx.exception.NetworkXNoPath: # stop if not further paths
-                break
-            p_edges = []
-            for i in range(1, len(p)):
-                u = p[i-1]
-                v = p[i]
-                p_edges.append((u,v))
-            nx_graph.remove_edges_from(p_edges)
-            paths.append(p)
+        try:
+            paths = list(nx.edge_disjoint_paths(nx_graph, src, dst))
+            paths.sort(key=len) # sort the list of paths in terms of length (each edge is the same length)
+        except nx.exception.NetworkXNoPath: # if no paths
+            paths = []
         return paths
 
     def log_unsuccessful_ebit_share(self, edge):
@@ -807,12 +845,12 @@ def network_graph_setup():
 
     graph, traffic_matrix = None, None
     
-    ket_minus = ns.h1   # ns.h1 = |−⟩  = 1/√(2)*(|0⟩ − |1⟩)
-    ket_plus = ns.h0    # ns.h0 = |+⟩  = 1/√(2)*(|0⟩ + |1⟩)
-    ket_1_y = ns.y1     # ns.y0 = |1𝑌⟩ = 1/√(2)*(|0⟩ - 𝑖|1⟩)
-    ket_0_y = ns.y0     # ns.y0 = |0𝑌⟩ = 1/√(2)*(|0⟩ + 𝑖|1⟩)
-    ket_1 = ns.s1       # ns.s1 = |1⟩
-    ket_0 = ns.s0       # ns.s0 = |0⟩
+    # ket_minus = ns.h1   # ns.h1 = |−⟩  = 1/√(2)*(|0⟩ − |1⟩)
+    # ket_plus = ns.h0    # ns.h0 = |+⟩  = 1/√(2)*(|0⟩ + |1⟩)
+    # ket_1_y = ns.y1     # ns.y0 = |1𝑌⟩ = 1/√(2)*(|0⟩ - 𝑖|1⟩)
+    # ket_0_y = ns.y0     # ns.y0 = |0𝑌⟩ = 1/√(2)*(|0⟩ + 𝑖|1⟩)
+    # ket_1 = ns.s1       # ns.s1 = |1⟩
+    # ket_0 = ns.s0       # ns.s0 = |0⟩
 
     
     graph = {
@@ -837,7 +875,8 @@ def network_graph_setup():
         'n16': ['n15', 'n12'],
     }
     
-    states = [(ket_minus, '|−⟩'), (ket_plus, '|+⟩'), (ket_1_y, '|1Y⟩'), (ket_0_y, '|1Y⟩'), (ket_1, '|1⟩'), (ket_0, '|0⟩')]
+    # states = [(ket_minus, '|−⟩'), (ket_plus, '|+⟩'), (ket_1_y, '|1Y⟩'), (ket_0_y, '|1Y⟩'), (ket_1, '|1⟩'), (ket_0, '|0⟩')]
+
     nodes = [i for i in graph.keys()]
     
     traffic_matrix = {}
@@ -848,11 +887,13 @@ def network_graph_setup():
             dst = random.choice(nodes)
             if src != dst:
                 break
-        state_tuple = random.choice(states)
-        state_state = state_tuple[0]
-        state_str = state_tuple[1]
-        traffic_matrix[i+1] = { 'src': src, 'dst': dst, 'data_qubit_state': state_state}
-        traffic_matrix_print[i+1] = { 'src': src, 'dst': dst, 'data_qubit_state': state_str}
+        # state_tuple = random.choice(states)
+        # state_state = state_tuple[0]
+        # state_str = state_tuple[1]
+        # traffic_matrix[i+1] = { 'src': src, 'dst': dst, 'data_qubit_state': state_state}
+        # traffic_matrix_print[i+1] = { 'src': src, 'dst': dst, 'data_qubit_state': state_str}
+        traffic_matrix[i+1] = { 'src': src, 'dst': dst}
+        traffic_matrix_print[i+1] = { 'src': src, 'dst': dst}
     return graph, traffic_matrix, traffic_matrix_print
 
 def get_args():
@@ -882,8 +923,8 @@ def main():
     args = get_args()
     handle_args(args)
 
-    logging.basicConfig(filename='./slmp/slmp-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
-    # logging.basicConfig(filename='slmp-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
+    # logging.basicConfig(filename='./slmp/slmp-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
+    logging.basicConfig(filename='slmp-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
     graph, traffic_matrix, traffic_matrix_print = network_graph_setup()
     logging.info(f" Traffic Matrix:")
     for i in range(config.num_of_timeslots):
