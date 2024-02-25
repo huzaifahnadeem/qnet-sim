@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# slmp global with components (using protocols approach) (for slmp global without components using simulation engine approach -- see ./examples/slmo_wo_channels.py)
+
 import netsquid as ns
 from netsquid.components import QuantumChannel
 from netsquid.components import ClassicalChannel
