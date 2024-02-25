@@ -882,8 +882,8 @@ def main():
     args = get_args()
     handle_args(args)
 
-    # logging.basicConfig(filename='./examples/slmp-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
-    logging.basicConfig(filename='slmp-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
+    logging.basicConfig(filename='./slmp/slmp-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
+    # logging.basicConfig(filename='slmp-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
     graph, traffic_matrix, traffic_matrix_print = network_graph_setup()
     logging.info(f" Traffic Matrix:")
     for i in range(config.num_of_timeslots):

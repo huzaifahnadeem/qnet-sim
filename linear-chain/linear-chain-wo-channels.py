@@ -444,7 +444,7 @@ def network_graph_setup(length):
 def main():
     # TODO: multiple src-dst. maybe not in linear chain but still do.
 
-    logging.basicConfig(filename='./examples/linear-chain-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
+    logging.basicConfig(filename='./linear-chain/linear-chain-wo-channels.log', encoding='utf-8', level=logging.DEBUG)
     logging.info(f" === start ===")
     
     ns.sim_reset()
