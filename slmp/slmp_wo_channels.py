@@ -9,7 +9,8 @@ import argparse
 
 import data_logger as dl
 
-data_logger = dl.DataLogger(labels=['ts', 'data_qubit_transmitted', 'x-hop', 'y-hop'])
+# data_logger = dl.DataLogger(labels=['ts', 'data_qubit_transmitted', 'x-hop', 'y-hop'])
+data_logger = dl.DataLogger(labels=['ts', 'src', 'dst', 'path_used', 'qubit_teleported', 'x-hop', 'y-hop'])
 
 # possible states that the data qubit can be in (v limited rn will add variety later):
 ket_minus = ns.h1   # ns.h1 = |−⟩  = 1/√(2)*(|0⟩ − |1⟩)
@@ -20,22 +21,38 @@ ket_1 = ns.s1       # ns.s1 = |1⟩
 ket_0 = ns.s0       # ns.s0 = |0⟩
 data_qubit_states = [(ket_minus, '|−⟩'), (ket_plus, '|+⟩'), (ket_1_y, '|1Y⟩'), (ket_0_y, '|1Y⟩'), (ket_1, '|1⟩'), (ket_0, '|0⟩')] # tuple index 0 = state vector, index 1 = string for printing purposes
 
-class config:
-    seed = 0
-    num_of_timeslots = 5
-    time_slot_length = 100
+config = None
+class Config:
+    # seed = 0
+    # num_of_timeslots = 5
+    # time_slot_length = 100
 
-    ebits_ready_delay = 10 # how long it takes for the ebits to be ready after you initiate the generation process
-    ebits_across_channel_delay = 10
-    ext_phase_end_delay = 5
+    # ebits_ready_delay = 10 # how long it takes for the ebits to be ready after you initiate the generation process
+    # ebits_across_channel_delay = 10
+    # ext_phase_end_delay = 5
 
-    internal_phase_delay = 10
-    corrections_delay = 5
+    # internal_phase_delay = 10
+    # corrections_delay = 5
 
-    prob_ebit_arrives_successfully_over_channel = 50 # p probability parameter
-    prob_swap_op_successful = 10 # q probability parameter
-    p = prob_ebit_arrives_successfully_over_channel
-    q = prob_swap_op_successful
+    # # prob_ebit_arrives_successfully_over_channel = 50 # p probability parameter
+    # # prob_swap_op_successful = 10 # q probability parameter
+    # p = None # prob_ebit_arrives_successfully_over_channel
+    # q = None # prob_swap_op_successful
+
+    def __init__(self, p, q, n_ts, s) -> None:
+        self.p = p
+        self.q = q
+        self.num_of_timeslots = n_ts
+        self.seed = s
+
+        self.num_of_timeslots = 5
+        self.time_slot_length = 100
+        self.ebits_ready_delay = 10 # how long it takes for the ebits to be ready after you initiate the generation process
+        self.ebits_across_channel_delay = 10
+        self.ext_phase_end_delay = 5
+        self.internal_phase_delay = 10
+        self.corrections_delay = 5
+
 
 # ns.set_random_state(seed=config.seed)
 # random.seed(config.seed)
@@ -81,20 +98,27 @@ def calc_y_sep(n1, n2):
         counter += 1
     return int(abs((num1 - num2)/4))
 
-def ebit_arrives_across_channel():
+def _ebit_arrives_across_channel(p):
     arrives = True
-    prob_ebit_lost_over_channel = 1 - config.prob_ebit_arrives_successfully_over_channel
+    prob_ebit_lost_over_channel = 1 - p
     r = random.randint(1, 100)
-    if r <= prob_ebit_lost_over_channel:
+    if r <= prob_ebit_lost_over_channel*100:
         arrives = False
     
     return arrives
 
+_results_ebit_arrives_across_channel = {}
+
+def ebit_arrives_across_channel(node, neighbour, ts):
+    key = ts
+    return _results_ebit_arrives_across_channel[key][(node, neighbour)]
+
 def swap_op_successful():
     op_successful = False
-    q = config.prob_swap_op_successful
+    # q = config.prob_swap_op_successful
+    q = config.q
     r = random.randint(1, 100)
-    if r <= q:
+    if r <= (q*100):
         op_successful = True
     
     return op_successful
@@ -115,7 +139,7 @@ class NodeEntity(pydynaa.Entity):
         self.net_graph = net_graph
         self.controller_entity = None
         self.node_entities = {}
-        self.curr_ts = 0
+        self.curr_ts = None
         self.role = None
         self.neighbours = self.net_graph[self.name]
         self.smaller_id_neighbours = [n for n in self.neighbours if int(n[1:]) < int(self.name[1:])]
@@ -126,6 +150,7 @@ class NodeEntity(pydynaa.Entity):
         self.data_qbit = None
         self.swap_data = {}
         self.corrections = None
+        self.e2e_path_this_ts = None
         # self.neighbours_comm_events = {}
         # for n in self.neighbours:
         #     self.neighbours_comm_events[n] = {
@@ -180,7 +205,8 @@ class NodeEntity(pydynaa.Entity):
 
     def _new_ts(self, _):
         self.reset()
-        self.curr_ts += 1
+        # self.curr_ts += 1
+        self.curr_ts = self.controller_entity.curr_ts_for_nodes
         self.role = self._role_in_this_ts()
 
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: starting external phase procedure.")
@@ -193,9 +219,9 @@ class NodeEntity(pydynaa.Entity):
         )
     
     def _role_in_this_ts(self):
-        if self.traffic_matrix[self.curr_ts]['src'] == self.name:
+        if self.traffic_matrix[int(self.curr_ts)]['src'] == self.name:
             role = 'src'
-        elif self.traffic_matrix[self.curr_ts]['dst'] == self.name:
+        elif self.traffic_matrix[int(self.curr_ts)]['dst'] == self.name:
             role = 'dst'
         else:
             role = 'repeater'
@@ -239,7 +265,7 @@ class NodeEntity(pydynaa.Entity):
     def _receive_ebits(self, _):
         for n in self.neighbours:
             ebit = self.node_entities[n].ebits_to_send[self.name]
-            if ebit_arrives_across_channel():
+            if ebit_arrives_across_channel(self.name, n, self.curr_ts):
                 self.ebits_received[n] = ebit
                 logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: received ebit from {n}.")
                 # self._schedule_after(config.ebits_across_channel_delay, self.neighbours_comm_events[n]['received_ebit'])
@@ -370,14 +396,14 @@ class NodeEntity(pydynaa.Entity):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: role is '{self.role}'.")
         
         # wait for swap operations to finish:
-        repeater_nodes_on_path = self.e2e_path_this_ts[0][1:-1] # index 0 has the shortest path
+        repeater_nodes_on_path = self.e2e_path_this_ts[1:-1] # index 0 has the shortest path
         
         if repeater_nodes_on_path == []:
             self.event_msgs['neighbouring-src-dst-case'] = True
             self._teleport_data_qubit()
         else:
             # wait for a signal from the destination that swapping has been performed and it has the e2e ebit.
-            dst_node_name = self.traffic_matrix[self.curr_ts]['dst']
+            dst_node_name = self.traffic_matrix[int(self.curr_ts)]['dst']
             dst_node_entity = self.node_entities[dst_node_name]
             # self._wait_once(
             #     event_type = NodeEntity.swap_operation_done_evtype,
@@ -399,7 +425,7 @@ class NodeEntity(pydynaa.Entity):
         def prepare_qubit_send_corrections(self=self):
             # prepare the data qubit
             self.data_qbit,  = ns.qubits.create_qubits(1, no_state=True)
-            # data_qubit_state = self.traffic_matrix[self.curr_ts]['data_qubit_state']
+            # data_qubit_state = self.traffic_matrix[int(self.curr_ts)]['data_qubit_state']
             
             possible_states = copy.deepcopy(data_qubit_states)
             random.shuffle(possible_states)
@@ -407,7 +433,7 @@ class NodeEntity(pydynaa.Entity):
             state_str_idx = 1
             data_qubit_state = possible_states[self.state_index][state_vector_idx]
             
-            dst_node_entity = self.node_entities[self.traffic_matrix[self.curr_ts]['dst']]
+            dst_node_entity = self.node_entities[self.traffic_matrix[int(self.curr_ts)]['dst']]
             dst_node_entity.dst_expected_state = data_qubit_state
 
             logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: data qubit state = {possible_states[state_vector_idx][state_str_idx]}")
@@ -415,12 +441,12 @@ class NodeEntity(pydynaa.Entity):
             ns.qubits.assign_qstate([self.data_qbit], data_qubit_state)
             
             # corrections:
-            next_node_on_path = self.e2e_path_this_ts[0][1] # next node with the order: src -> dst. the first index 0 is to get the shortest path
+            next_node_on_path = self.e2e_path_this_ts[1] # next node with the order: src -> dst. the first index 0 is to get the shortest path
             ebit = self.ebits_memory[next_node_on_path]
             m0, m1 = self._prepare_corrections(self.data_qbit, ebit)
             self.corrections = (m0, m1)
         
-        dst_node_entity = self.node_entities[self.traffic_matrix[self.curr_ts]['dst']]
+        dst_node_entity = self.node_entities[self.traffic_matrix[int(self.curr_ts)]['dst']]
         # # dismiss waiting on the other possible event
         # self._dismiss(
         #         event_type = NodeEntity.swap_operation_fail_evtype,
@@ -445,14 +471,20 @@ class NodeEntity(pydynaa.Entity):
     
     def _teleport_failure_no_e2e_ebit(self, _=None):
         # dismiss waiting on the other possible event
-        # dst_node_entity = self.node_entities[self.traffic_matrix[self.curr_ts]['dst']]
+        # dst_node_entity = self.node_entities[self.traffic_matrix[int(self.curr_ts)]['dst']]
         # self._dismiss(
         #     event_type = NodeEntity.swap_operation_done_evtype,
         #     entity = dst_node_entity,
         #     handler = pydynaa.EventHandler(self._teleport_data_qubit),
         # )
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: Failed to teleport the data qubit due to a swap failure on path.")
-        data_logger.add_data_point([self.curr_ts, 'fail', self.controller_entity.this_ts_xhop, self.controller_entity.this_ts_yhop])
+        # log data point:
+        data_pt_src = self.traffic_matrix[int(self.curr_ts)]['src']
+        data_pt_dst = self.traffic_matrix[int(self.curr_ts)]['dst']
+        data_pt_xhop = calc_x_sep(data_pt_src, data_pt_dst)
+        data_pt_yhop = calc_y_sep(data_pt_src, data_pt_dst)
+        data_point = [round(self.controller_entity.curr_ts, 1), data_pt_src, data_pt_dst, self.e2e_path_this_ts, 0, data_pt_xhop, data_pt_yhop]
+        data_logger.add_data_point(data_point)
 
 
     def _prepare_corrections(self, data_qubit, entangled_qubit):
@@ -466,11 +498,11 @@ class NodeEntity(pydynaa.Entity):
     # internal phase -> role = dst:
     def _prepare_to_receive_teleported_qbit(self):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: role is '{self.role}'.")
-        src_node_name = self.traffic_matrix[self.curr_ts]['src']
+        src_node_name = self.traffic_matrix[int(self.curr_ts)]['src']
         src_node_entity = self.node_entities[src_node_name]
 
         # first perform the steps to generate e2e ebit during the swapping process:
-        prev_node_on_path = self.e2e_path_this_ts[0][-2] # the first index 0 is to get the shortest path
+        prev_node_on_path = self.e2e_path_this_ts[-2] # the first index 0 is to get the shortest path
         prev_repeater_node_on_path = prev_node_on_path if prev_node_on_path != src_node_name else None
         if prev_repeater_node_on_path is not None: # if == None, then the source is directly on the left. in that case, no swapping required so just move to the next step.
             # wait for the left-side neighbour on path to generate the corrections. When done, apply corrections to get the e2e ebit. then proceed to next step
@@ -493,7 +525,7 @@ class NodeEntity(pydynaa.Entity):
             )
         else:
             # case where the source is your direct neighbour:
-            prev_node_on_path = self.e2e_path_this_ts[0][-2] # the first index 0 is to get the shortest path
+            prev_node_on_path = self.e2e_path_this_ts[-2] # the first index 0 is to get the shortest path
             e2e_ebit = self.ebits_memory[prev_node_on_path]
             self.e2e_ebit = e2e_ebit
 
@@ -533,7 +565,7 @@ class NodeEntity(pydynaa.Entity):
             self.event_msgs['swap'] = 'success'
             self._schedule_after(1, NodeEntity.swap_operation_update_evtype)
             # wait for the source to send you the corrections.
-            src_node_name = self.traffic_matrix[self.curr_ts]['src']
+            src_node_name = self.traffic_matrix[int(self.curr_ts)]['src']
             src_node_entity = self.node_entities[src_node_name]
             self._wait_once(
                     event_type = NodeEntity.corrections_ready_evtype,
@@ -560,30 +592,36 @@ class NodeEntity(pydynaa.Entity):
         return fidelity, ebit
     
     def _receive_teleported_qbit(self, _):
-        src_node_name = self.traffic_matrix[self.curr_ts]['src']
+        src_node_name = self.traffic_matrix[int(self.curr_ts)]['src']
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: ready to receive the data qubit from the source ({src_node_name})")
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: got the signal that corrections are ready at {src_node_name}.")
         src_node_entity = self.node_entities[src_node_name]
-        # original_state = self.traffic_matrix[self.curr_ts]['data_qubit_state']
+        # original_state = self.traffic_matrix[int(self.curr_ts)]['data_qubit_state']
         original_state = self.dst_expected_state
         corrections = src_node_entity.corrections
         ebit = self.e2e_ebit
         fidelity,_ = self._apply_corrections(ebit, corrections, original_state)
         self.dst_expected_state = None # reset var
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: qubit state teleported with fidelity = {fidelity:.3f}")
-        data_logger.add_data_point([self.curr_ts, 'success', self.controller_entity.this_ts_xhop, self.controller_entity.this_ts_yhop])
+        # log data point:
+        data_pt_src = self.traffic_matrix[int(self.curr_ts)]['src']
+        data_pt_dst = self.traffic_matrix[int(self.curr_ts)]['dst']
+        data_pt_xhop = calc_x_sep(data_pt_src, data_pt_dst)
+        data_pt_yhop = calc_y_sep(data_pt_src, data_pt_dst)
+        data_point = [round(self.controller_entity.curr_ts, 1), data_pt_src, data_pt_dst, self.e2e_path_this_ts, 1, data_pt_xhop, data_pt_yhop]
+        data_logger.add_data_point(data_point)
 
     # internal phase -> role = repeater:
     def _perform_swaps(self):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: role is '{self.role}'.")
-        if self.name not in self.e2e_path_this_ts[0]: # the index 0 is to get the shortest path
+        if self.name not in self.e2e_path_this_ts: # the index 0 is to get the shortest path
             logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: is not on the path. so this node is done in this ts")
         else:
         # try:
-            my_pos_on_path = self.e2e_path_this_ts[0].index(self.name) # the index 0 is to get the shortest path
-            src_node_name = self.traffic_matrix[self.curr_ts]['src']
-            prev_node_on_path = self.e2e_path_this_ts[0][my_pos_on_path - 1] # the first index 0 is to get the shortest path
-            next_node_on_path = self.e2e_path_this_ts[0][my_pos_on_path + 1] # the first index 0 is to get the shortest path
+            my_pos_on_path = self.e2e_path_this_ts.index(self.name) # the index 0 is to get the shortest path
+            src_node_name = self.traffic_matrix[int(self.curr_ts)]['src']
+            prev_node_on_path = self.e2e_path_this_ts[my_pos_on_path - 1] # the first index 0 is to get the shortest path
+            next_node_on_path = self.e2e_path_this_ts[my_pos_on_path + 1] # the first index 0 is to get the shortest path
             prev_repeater_node_on_path = prev_node_on_path if prev_node_on_path != src_node_name else None
             next_repeater_node_on_path = next_node_on_path
 
@@ -675,8 +713,8 @@ class NodeEntity(pydynaa.Entity):
     def _swap_fail(self, _=None):
         # # dismiss waiting on the other event (case swap done):
         # if self.role == 'dst':
-        src_node_name = self.traffic_matrix[self.curr_ts]['src']
-        prev_node_on_path = self.e2e_path_this_ts[0][-2] # the first index 0 is to get the shortest path
+        src_node_name = self.traffic_matrix[int(self.curr_ts)]['src']
+        prev_node_on_path = self.e2e_path_this_ts[-2] # the first index 0 is to get the shortest path
         prev_repeater_node_on_path = prev_node_on_path if prev_node_on_path != src_node_name else None
         left_side_repeater_entity = self.node_entities[prev_repeater_node_on_path]
         #     self._dismiss(
@@ -720,12 +758,30 @@ class ControllerEntity(pydynaa.Entity):
         self.name = 'controller'
         self.num_ts = config.num_of_timeslots
         self.ts_length = config.time_slot_length
-        self.curr_ts = 0
-        self.e2e_path_this_ts = None
+        self.curr_ts = 0.9
+        # self.e2e_path_this_ts = None
         self.unsuccessful_ebit_share_log = []
         self.skip_to_next_ts = False # if no path possible for internal phase, then this becomes true so the nodes skip the internal phase of the current time slot
-        self.this_ts_xhop = 0
-        self.this_ts_yhop = 0
+        # self.this_ts_xhop = 0
+        # self.this_ts_yhop = 0
+
+        # e2e paths:
+        # finding external phase prob results for each edge in all the paths in all timeslots: (doing like this makes it easier (fewer changes))
+        global _results_ebit_arrives_across_channel
+        _results_ebit_arrives_across_channel = {}
+        self.e2e_paths = []
+        self.this_ts_path_idx = 0
+        self.e2e_path_this_ts = None # nodes access this
+        self.curr_ts_for_nodes = 1 # nodes access this to update their time
+        for t in range(self.num_ts):
+            key = t+1
+            val = _results_ebit_arrives_across_channel.setdefault(key, {})
+            for n1 in self.net_graph:
+                for n2 in self.net_graph[n1]:
+                    val[(n1, n2)] = _ebit_arrives_across_channel(p=config.p)
+            self.e2e_paths.append(self._e2e_path(t+1))
+        logging.info(f"  ====== paths: ==========")
+        logging.info(f"{self.e2e_paths}")
         self._wait(
                 event_type = ControllerEntity._init_new_ts_evtype, # Only events of the given event_type will match the filter.
                 entity = self, # Only events from this entity will match the filter
@@ -751,8 +807,22 @@ class ControllerEntity(pydynaa.Entity):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: starts.")
         self._schedule_now(ControllerEntity._init_new_ts_evtype)
     
+    def _increment_ts(self):
+        paths_this_ts = self.e2e_paths[self.curr_ts_for_nodes-1]
+        if (paths_this_ts is None) or (self.this_ts_path_idx >= len(paths_this_ts)):
+            self.this_ts_path_idx = 0
+            new_curr_ts_controller = float(int(self.curr_ts) + 1.0)
+            self.curr_ts_for_nodes += 1
+            self.e2e_path_this_ts = None
+        else:
+            new_curr_ts_controller = self.curr_ts + 0.1
+            self.e2e_path_this_ts = paths_this_ts[self.this_ts_path_idx]
+            self.this_ts_path_idx += 1
+
+        return new_curr_ts_controller
+
     def _new_ts(self, _):
-        self.curr_ts += 1
+        self.curr_ts = self._increment_ts()
         self.unsuccessful_ebit_share_log = [] # reset to empty list of edges
         self.skip_to_next_ts = False # reset to False
         logging.info(f" sim_time = {ns.sim_time():.1f}: ==== start of ts # {self.curr_ts} ==== ")
@@ -760,7 +830,7 @@ class ControllerEntity(pydynaa.Entity):
         self._schedule_now(ControllerEntity.new_ts_evtype)
 
         # schedule the event for start of the next timeslot (unless currently in the last ts):
-        if self.curr_ts < self.num_ts:
+        if self.curr_ts < float(self.num_ts):
             self._schedule_after(self.ts_length, ControllerEntity._init_new_ts_evtype)
 
         # wait for external phase to finish:
@@ -782,30 +852,47 @@ class ControllerEntity(pydynaa.Entity):
 
     def _ext_phase_done(self, _):
         logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: ext phase done.")
-        self.e2e_path_this_ts = self._e2e_path()
-        if self.e2e_path_this_ts is None: # i.e. no possible path between src and destination:
+        # self.e2e_path_this_ts = self._e2e_path() # moved to __init__()
+        if self.e2e_path_this_ts == None: # i.e. no possible path between src and destination:
             logging.info(f" sim_time = {ns.sim_time():.1f}: {self.name}: No path possible from src to dst in this timeslot. All nodes moving to next ts.")
-            data_logger.add_data_point([self.curr_ts, 'fail', self.controller_entity.this_ts_xhop, self.controller_entity.this_ts_yhop])
             self.skip_to_next_ts = True
+            # log data point:
+            data_pt_src = self.traffic_matrix[self.curr_ts_for_nodes]['src']
+            data_pt_dst = self.traffic_matrix[self.curr_ts_for_nodes]['dst']
+            data_pt_xhop = calc_x_sep(data_pt_src, data_pt_dst)
+            data_pt_yhop = calc_y_sep(data_pt_src, data_pt_dst)
+            data_point = [round(self.curr_ts, 1), data_pt_src, data_pt_dst, self.e2e_path_this_ts, 0, data_pt_xhop, data_pt_yhop]
+            data_logger.add_data_point(data_point)
         self._schedule_after(config.internal_phase_delay, ControllerEntity.start_internal_phase_evtype)
 
-    def _e2e_path(self):
-        src = self.traffic_matrix[self.curr_ts]['src']
-        dst = self.traffic_matrix[self.curr_ts]['dst']
-        nx_sub_graph = self._subgraph_after_ext_phase(self.nx_graph)
+    def _e2e_path(self, ts):
+        # src = self.traffic_matrix[int(self.curr_ts)]['src']
+        # dst = self.traffic_matrix[int(self.curr_ts)]['dst']
+        src = self.traffic_matrix[ts]['src']
+        dst = self.traffic_matrix[ts]['dst']
+        nx_sub_graph = self._subgraph_after_ext_phase(self.nx_graph, ts)
         paths = self._shortest_src_dst_paths(src, dst, nx_sub_graph)
         if paths == []: # i.e. no possible path between src and destination:
-            self.this_ts_xhop = -1
-            self.this_ts_yhop = -1
+            # self.this_ts_xhop = -1
+            # self.this_ts_yhop = -1
             return None
-        self.this_ts_xhop = calc_x_sep(src, dst)
-        self.this_ts_yhop = calc_y_sep(src, dst)
+        # self.this_ts_xhop = calc_x_sep(src, dst)
+        # self.this_ts_yhop = calc_y_sep(src, dst)
         # return paths[0] # return the shortest of all shortest paths (index 0)
         return paths
 
-    def _subgraph_after_ext_phase(self, nx_graph_original):
+    def _subgraph_after_ext_phase(self, nx_graph_original, ts):
+        # old code: before >1 qubit implementation:
+        # nx_graph = copy.deepcopy(nx_graph_original)
+        # edges_list = self.unsuccessful_ebit_share_log
+        # nx_graph.remove_edges_from(edges_list)
+        # return nx_graph
+
         nx_graph = copy.deepcopy(nx_graph_original)
-        edges_list = self.unsuccessful_ebit_share_log
+        edges_list = []
+        for edge_tup in _results_ebit_arrives_across_channel[ts]:
+            if _results_ebit_arrives_across_channel[ts][edge_tup] == False:
+                edges_list.append(edge_tup)
         nx_graph.remove_edges_from(edges_list)
         return nx_graph
 
@@ -911,11 +998,16 @@ def get_args():
     return args
 
 def handle_args(args):
-    config.p = args.p_prob * 100
-    config.q = args.q_prob * 100
-    config.num_of_timeslots = args.num_ts
-    config.seed = args.seed
+    # config.prob_ebit_arrives_successfully_over_channel = args.p_prob * 100
+    # config.prob_swap_op_successful = args.q_prob * 100
+    # config.p = args.p_prob # * 100
+    # config.q = args.q_prob # * 100
+    # config.num_of_timeslots = args.num_ts
+    # config.seed = args.seed
 
+    conf = Config(args.p_prob, args.q_prob, args.num_ts, args.seed)
+    global config
+    config = conf
     ns.set_random_state(seed=config.seed)
     random.seed(config.seed)
 

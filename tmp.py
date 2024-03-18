@@ -1,10 +1,10 @@
 # random some stuff here. (for checking something really quickly, for example)
 
 
-p = ['n1', 'n2', 'n3', 'n4']
-r = p[1:-1]
+# p = ['n1', 'n2', 'n3', 'n4']
+# r = p[1:-1]
 
-print(r[1][1:])
+# print(r[1][1:])
 
 # import random
 
@@ -27,3 +27,8 @@ print(r[1][1:])
 #         lost += 1
 
 # print(lost)
+
+# lst = [0, 1, 2]
+# print(lst[3])
+
+print(-0.9+1)
