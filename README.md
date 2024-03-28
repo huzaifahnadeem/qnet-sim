@@ -32,3 +32,9 @@ Further instructions on installation: https://docs.netsquid.org/latest-release/I
 
 ## To deactivate the venv:
 ```deactivate```
+
+## directory structure (for now):
+- initial-exploration-code: contains old code when i first first exploring the library. its mostly useless now.
+- linear-chain: also not useful now. simple linear network that teleports qubits. uses a simplified slmp algorithm
+- qpass-qcast: this is the main one. will probably make it super generalized later to include slmp (and possibly others later).
+- slmp: implementation of slmp using entities. another implementation of slmp without entities (used yield statements) is in initial-exploration-code
