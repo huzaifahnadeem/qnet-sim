@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import copy
 import numpy as np
 import random
-import constants as consts
+# import constants as consts
 import lower_level_fns
 
 seed = 4

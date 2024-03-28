@@ -10,8 +10,8 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": ["--seed=0", "--p_prob=0.5", "--q_prob=0.1", "--num_ts=5"]
+            "justMyCode": false,
+            // "args": ["--seed=0", "--p_prob=0.5", "--q_prob=0.1", "--num_ts=5"]
             // "args": ["--seed=0", "--p_prob=1", "--q_prob=1", "--num_ts=10"]
         }
     ]
