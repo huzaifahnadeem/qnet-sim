@@ -486,7 +486,6 @@ class NodeEntity(pydynaa.Entity):
         data_point = [round(self.controller_entity.curr_ts, 1), data_pt_src, data_pt_dst, self.e2e_path_this_ts, 0, data_pt_xhop, data_pt_yhop]
         data_logger.add_data_point(data_point)
 
-
     def _prepare_corrections(self, data_qubit, entangled_qubit):
         ns.qubits.operate([data_qubit, entangled_qubit], ns.CNOT)
         ns.qubits.operate(data_qubit, ns.H)

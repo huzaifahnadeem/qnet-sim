@@ -8,10 +8,11 @@ from netsquid.components import QuantumChannel, ClassicalChannel, QuantumMemory
 # from netsquid.components.models.delaymodels import FibreDelayModel # TODO: need to add this later
 import networkx as nx
 from netsquid.components import QuantumMemory
+import netsquid as ns
 
 
 import globals
-from network_topologies import network_choice
+from topologies import network_choice
 from entities import NodeEntity
 
 class Node(ns_Node):
@@ -21,8 +22,7 @@ class Node(ns_Node):
 
 class Network(ns_Network):
     def __init__(self, name=globals.args.network.value) -> None:
-        nw_dict = network_choice()
-        self.nx_graph = nx.Graph(nw_dict) # used for yen's algorithm and for visualzing the network situation (<- TODO this second part)
+        self.nx_graph = network_choice() # used for yen's algorithm and for visualizing the network situation (<- TODO this second part)
         
         # TODO: assumed input network is SLMP_GRID_4x4. so num of quantum memories hardcoded below. change later when you implement other networks
         super().__init__(name=name)
@@ -40,13 +40,12 @@ class Network(ns_Network):
     def _create_nodes(self):
         for node_name in self.node_names():
             # TODO: Assuming unique name. might require an ID field if that is not the case. for SLMP_GRID_4x4 this is fine.
-            if globals.args.network is globals.NET_TOPOLOGY.SLMP_GRID_4x4:
-                qubit_capacity = 4 # TODO: 4 is the qubit capacity of each node in SLMP. make this dynamic. also probably redundant since we have the qmemory as well.
-            else:
-                raise NotImplementedError("Can only use SLMP_GRID_4x4 right now.")
+            degree = self.nx_graph.degree[node_name]
+            qubit_capacity = degree # By default go with qubit_capacity = degree of node just like SLMP paper. TODO: one should be able to define this in topology for QPASS and probably others
             this_node = Node(
                 name = node_name,
-                ID = int(node_name[1:]), # TODO: this is assuming SLMP_GRID_4x4. make dynamic
+                # not using ID. but might be good to have? currently assume unique names so dont need IDs.
+                # ID = int(node_name[1:]), # TODO: this is assuming SLMP_GRID_4x4. make dynamic
                 qmemory = QuantumMemory(name=f"{node_name}-qmem", num_positions=qubit_capacity),
                 # node_entity = NodeEntity(node_name), # TODO: update?
             )
@@ -62,7 +61,6 @@ class Network(ns_Network):
                 already_done.append((u, v))
                 already_done.append((v, u))
         
-    
     def gen_label(self, u, v, of, num=0):
         # assume: u to v for channels. bidirectional for connection
         label = ''
@@ -101,9 +99,11 @@ class Network(ns_Network):
                 name = c_conn_label,
                 channel_AtoB = ClassicalChannel(
                                 name = self.gen_label(u_name, v_name, of=label_options.CCHANNEL),
+                                length=length,
                             ),
                 channel_BtoA = ClassicalChannel(
                                 name = self.gen_label(v_name, u_name, of=label_options.CCHANNEL),
+                                length=length,
                             ),
             )
         local_port_name, remote_port_name = network.add_connection(u, v, c_conn, label=c_conn_label)
@@ -122,13 +122,33 @@ class Network(ns_Network):
             qmem_name = self.gen_label(u_name, v_name, of=label_options.CONN_QMEM, num=channel_num)
             u.add_subcomponent(QuantumMemory(qmem_name, num_positions=1))
             v.add_subcomponent(QuantumMemory(qmem_name, num_positions=1))
+            
+            if globals.args.error_model == 'none':
+                q_channel_model = None # options include delay_model (class DelayModel), quantum_noise_model, quantum_loss_model (class for the latter 2 is QuantumErrorModel).  quantum_loss_model has a model to use probability to lose qubit
+            elif globals.args.error_model == 'dephase':
+                # rate = 0.25
+                rate = globals.args.error_param
+                # is_time_independent = True
+                is_time_independent = True if globals.args.error_time_independent == 'yes' else False
+                q_channel_model = {"quantum_noise_model": ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=rate, time_independent=is_time_independent)}
+            elif globals.args.error_model == 'depolar':
+                # rate = 0.9
+                rate = globals.args.error_param
+                # is_time_independent = True
+                is_time_independent = True if globals.args.error_time_independent == 'yes' else False
+                q_channel_model = {"quantum_noise_model": ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=rate, time_independent=is_time_independent)}
+            
             q_conn = DirectConnection(
                     name = q_conn_label,
                     channel_AtoB = QuantumChannel(
                                     name = self.gen_label(u_name, v_name, of=label_options.QCHANNEL),
+                                    length=length, # in km
+                                    models=q_channel_model, 
                                 ),
                     channel_BtoA = QuantumChannel(
                                     name = self.gen_label(v_name, u_name, of=label_options.QCHANNEL),
+                                    length=length, # in km
+                                    models=q_channel_model,
                                 ),
                 )
             local_port_name, remote_port_name = network.add_connection(u, v, q_conn, label=q_conn_label)
@@ -162,22 +182,27 @@ class Network(ns_Network):
 
     def _message_recv_handler(self, m):
         # print(f'rcv msg:{m}')
-        msg_packet = m.items[0]
-        header = {}
-        header['src'] = m.meta['header'][0]
-        header['dst'] = m.meta['header'][1]
-        header['channel_num'] = m.meta['header'][2]
-        network = super()
-        KEYS = globals.MSG_KEYS
-        if msg_packet[KEYS.TYPE] == 'ebit-sent':
-            this_entity = network.get_node(msg_packet[KEYS.DST]).entity
-            this_entity._rcv_ebit(msg_packet[KEYS.SRC], msg_packet[KEYS.CONN_NUM])
-        elif msg_packet[KEYS.TYPE] == 'ebit-received':
-            this_entity = network.get_node(msg_packet[KEYS.DST]).entity
-            this_entity.add_to_link_state(ebit_from=msg_packet[KEYS.DST], ebit_to=msg_packet[KEYS.SRC], on_channel_num=msg_packet[KEYS.CONN_NUM], received_successfully=msg_packet[KEYS.EBIT_RECV_SUCCESS])
-        elif msg_packet[KEYS.TYPE] == 'link-state':
-            this_entity = network.get_node(msg_packet[KEYS.DST]).entity
-            this_entity.save_neighbours_link_state(msg_packet[KEYS.SRC], msg_packet[KEYS.LINK_STATE])
+        for i in range(len(m.items)): # there can be more than 1 message packet in queue (if received >1 before reading and clearing message queue (happens internally -- i dont touch that part))
+            msg_packet = m.items[i]
+            header = {}
+            header['src'] = m.meta['header'][0]
+            header['dst'] = m.meta['header'][1]
+            header['channel_num'] = m.meta['header'][2]
+            network = super()
+            KEYS = globals.MSG_KEYS
+            MSG_TYPE = globals.MSG_TYPE
+            if msg_packet[KEYS.TYPE] is MSG_TYPE.ebit_sent:
+                this_entity: NodeEntity = network.get_node(msg_packet[KEYS.DST]).entity
+                this_entity._rcv_ebit(msg_packet[KEYS.SRC], msg_packet[KEYS.CONN_NUM])
+            elif msg_packet[KEYS.TYPE] is MSG_TYPE.ebit_received:
+                this_entity: NodeEntity = network.get_node(msg_packet[KEYS.DST]).entity
+                this_entity.add_to_link_state(ebit_from=msg_packet[KEYS.DST], ebit_to=msg_packet[KEYS.SRC], on_channel_num=msg_packet[KEYS.CONN_NUM], received_successfully=msg_packet[KEYS.EBIT_RECV_SUCCESS])
+            elif msg_packet[KEYS.TYPE] is MSG_TYPE.link_state:
+                this_entity: NodeEntity = network.get_node(header['dst']).entity
+                this_entity.process_link_state_packet(header['src'], msg_packet)
+            elif msg_packet[KEYS.TYPE] is MSG_TYPE.corrections:
+                this_entity: NodeEntity = network.get_node(msg_packet[KEYS.DST]).entity
+                this_entity._store_corrections(msg_packet)
 
     def _qubit_recv_handler(self, q):
         # print(f'rcv qbit:{q}')

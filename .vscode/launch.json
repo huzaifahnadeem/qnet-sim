@@ -5,10 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Python: main.py (qpass-qcast directory)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            // "program": "${file}", // for current file
+            "program": "${workspaceFolder}/qpass-qcast/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             // "args": ["--seed=0", "--p_prob=0.5", "--q_prob=0.1", "--num_ts=5"]

@@ -9,7 +9,11 @@ import networkx as nx
 from queue import PriorityQueue
 import netsquid as ns
 import copy
-from functools import reduce
+# from functools import reduce
+import quantum
+from math import sqrt
+
+# TODO: make new files for each alg and put functions specific to them there to make things neater. Probably a good idea to use protocol class too while we are at it
 
 class K_Hop_Neighbour_Node:
     # this class, i think, should be in network.py but that causes some circular import issue. So, putting it here for now.
@@ -24,6 +28,7 @@ class NodeEntity(pydynaa.Entity):
     p2_done_evtype = pydynaa.EventType("P2_DONE", "Phase 2 done.")
     p3_done_evtype = pydynaa.EventType("P3_DONE", "Phase 3 done.")
     p4_done_evtype = pydynaa.EventType("P4_DONE", "Phase 4 done.")
+    e2e_ready_evtype = pydynaa.EventType("E2E EBIT READY", "E2E ebit is ready. can teleport now")
     
     def __init__(self, name, node):
         self.name = name
@@ -36,14 +41,24 @@ class NodeEntity(pydynaa.Entity):
         self.k_hop_neighbours = [] # nodes that are <= k hops away
         self.imm_neighbours = [] # immediate neighbours (share an edge)
         self.connections = {}
+        self.corrections_received_evtype = pydynaa.EventType("RECEIVED CORRECTIONS", "Received some corrections to apply")
+        self.events_msg_passing = {} # for passing parameters etc between a function and the handler function if needed (for the same entity not across)
 
     def set_nis_entity(self, nis):
         self.nis = nis
 
     def set_network(self, nw):
         self.network = nw
+        
+        if globals.args.alg is globals.ALGS.SLMPG:
+            globals.args.p3_hop = float('inf')  # special case: the whole network knows the link state (aka global link state knowledge)
+
         self.k_hop_neighbours = self._find_k_hop_neighbours()
         self.imm_neighbours = [n for n in self.k_hop_neighbours if n.k_hop == 1]
+
+        if globals.args.alg is globals.ALGS.SLMPL:
+            # Doing this after k hop calculation because otherwise there would be no k hop or imm neighbours
+            self.k_hop_neighbours = None        # not applicable to SLMPl since not going to be sharing link state with anyone
 
     def _find_k_hop_neighbours(self):
         k_hop_neighbours = []
@@ -73,8 +88,6 @@ class NodeEntity(pydynaa.Entity):
             for chan_num in range(self.network.nx_graph[self.name][n.name]["width"]):
                 qlabel = self.network.gen_label(self.name, n.name, of=qconn_option, num=chan_num)
                 self.connections[n.name].append(self.network.get_connection(self.name, n.name, qlabel))
-        
-        t = 1
 
     def is_neighbour(self, node, imm_neighbour_only=True):
         neighbours = self.imm_neighbours
@@ -84,11 +97,17 @@ class NodeEntity(pydynaa.Entity):
         is_a_neighbour = False if [n for n in neighbours if n.name == node] == [] else True
         return is_a_neighbour
 
-    def send_message(self, v, message):
-        if self.is_neighbour(v):
-            self.network.send_message(self.name, v, message)
+    def send_message(self, v, message, send_directly=True):
+        if send_directly:
+            if self.is_neighbour(v):
+                send_to = v
+            else:
+                raise ValueError(f"Node {v.name} is not an immediate neighbour of {self.name} so this message cannot be sent.")
         else:
-            raise ValueError(f"Node {v.name} is not an immediate neighbour of {self.name} so this message cannot be sent.")
+            # find next hop on the shortest path and send it to that node.
+            shortest_path = list(nx.shortest_path(self.network.nx_graph, self.name, v))
+            send_to = shortest_path[shortest_path.index(self.name) + 1]
+        self.network.send_message(self.name, send_to, message)
         
     def send_qubit(self, v, qubit, channel_num=0):
         if self.is_neighbour(v):
@@ -116,17 +135,33 @@ class NodeEntity(pydynaa.Entity):
         self.link_state = {}
         self.neighbours_link_state = {}
         # TODO: discard connection qmem qubits from prev ts if any
+        # self.measurements = []
+        self.events_msg_passing = {}
 
     def _new_ts(self, _):
         self._cleanup()
         self.curr_ts = self.nis.curr_ts
-        # TODO: add "flow of time" (call p1, p2 fns using events)
+        
         self._p1()
-        self._p2()
-        self._p3()
-        self._p4()
-        self._send_data_qubit()
-        self._receive_data_qubit()
+
+        # start P2 once P1 is done:
+        self._wait_once(
+            event_type = NodeEntity.p1_done_evtype,
+            entity = self,
+            handler = pydynaa.EventHandler(self._p2),
+        )
+
+        self._wait_once(
+            event_type = NodeEntity.p2_done_evtype,
+            entity = self,
+            handler = pydynaa.EventHandler(self._p3),
+        )
+
+        self._wait_once(
+            event_type = NodeEntity.p3_done_evtype,
+            entity = self,
+            handler = pydynaa.EventHandler(self._p4),
+        )
     
     def _rcv_ebit(self, src_name, conn_num):
         this_event = pydynaa.EventType("EBIT_SENT", "...")
@@ -151,30 +186,32 @@ class NodeEntity(pydynaa.Entity):
             self.send_message(
                 src_name, 
                 message=self._gen_message_packet(
-                    msg_type='ebit-received',
+                    msg_type=globals.MSG_TYPE.ebit_received,
                     src_name=self.name,
                     dst_name=src_name, # dst is the source of qubit
                     conn_num=conn_num,
                     ebit_received_successfully=qubit_received
                     ),
                 )
+        
         self._wait_once(
             event_type = this_event,
             entity = self,
             handler = pydynaa.EventHandler(handler),
         )
 
-    def _gen_message_packet(self, msg_type, src_name=None, dst_name=None, dst_path=None, curr_ts=None, link_state=None, conn_num=None, ebit_received_successfully=None):
+    def _gen_message_packet(self, msg_type, src_name=None, dst_name=None, path=None, curr_ts=None, link_state=None, conn_num=None, ebit_received_successfully=None, corrections=None, data_qubit_state=None):
         KEYS = globals.MSG_KEYS
+        MSG_TYPE = globals.MSG_TYPE
         msg_packet = {}
-        if msg_type == 'ebit-sent':
+        if msg_type is MSG_TYPE.ebit_sent:
             msg_packet = {
                 KEYS.TYPE: msg_type,
                 KEYS.SRC: src_name,
                 KEYS.DST: dst_name,
                 KEYS.CONN_NUM: conn_num,
             }
-        elif msg_type == 'ebit-received':
+        elif msg_type is MSG_TYPE.ebit_received:
             msg_packet = {
                 KEYS.TYPE: msg_type,
                 KEYS.SRC: src_name,
@@ -182,14 +219,23 @@ class NodeEntity(pydynaa.Entity):
                 KEYS.CONN_NUM: conn_num,
                 KEYS.EBIT_RECV_SUCCESS: ebit_received_successfully,
             }
-        elif msg_type == 'link-state':
+        elif msg_type is MSG_TYPE.link_state:
             msg_packet = {
                 KEYS.TYPE: msg_type,
                 KEYS.SRC: src_name,
                 KEYS.DST: dst_name,
                 KEYS.TS: curr_ts,
-                KEYS.PATH: dst_path, # not really needed but makes coding slightly easier.
+                KEYS.PATH: path, # not really needed but makes coding slightly easier.
                 KEYS.LINK_STATE: link_state,
+            }
+        elif msg_type is MSG_TYPE.corrections:
+            msg_packet = {
+                KEYS.TYPE: msg_type,
+                KEYS.SRC: src_name,
+                KEYS.DST: dst_name,
+                KEYS.PATH: path,
+                KEYS.CORRECTIONS: corrections,
+                KEYS.DATA_QUBIT_STATE: data_qubit_state,
             }
         
         return msg_packet
@@ -222,7 +268,7 @@ class NodeEntity(pydynaa.Entity):
                     final_ls.append((neighbour_name, self.name, chann_num))
                 done.append((qb_src, qb_dst))
                 done.append((qb_dst, qb_src))
-        self.link_state = final_ls
+        self.link_state = {'final':final_ls}
 
     def add_to_link_state(self, ebit_from, ebit_to, on_channel_num, received_successfully):
         if (ebit_from, ebit_to) not in self.link_state.keys():
@@ -230,32 +276,43 @@ class NodeEntity(pydynaa.Entity):
         
         self.link_state[(ebit_from, ebit_to)][on_channel_num] = received_successfully
 
-    def save_neighbours_link_state(self, neighbour_name, link_state):
-        self.neighbours_link_state[neighbour_name] = link_state
+    def process_link_state_packet(self, recv_from, packet):
+        # else forward it to the next node on path.
+        KEYS = globals.MSG_KEYS
+        if packet[KEYS.DST] == self.name: # if link state packet meant for you, save it:
+            link_state = packet[KEYS.LINK_STATE]
+            link_state_of = packet[KEYS.SRC]
+            self.neighbours_link_state[link_state_of] = link_state
+        else:
+            # else forward it to the next node on path.
+            next_on_path_idx = 1 + packet[KEYS.PATH].index(self.name) # 1 + (index of this node on the path)
+            next_on_path_name =  packet[KEYS.PATH][next_on_path_idx]
+            self.send_message(next_on_path_name, packet)
 
     def _establish_links(self):
-        if globals.args.two_sided_epr == False:
+        if globals.args.two_sided_epr == False: # TODO: add a third option where the connection generates the paper (like in netsquid tutorial/examples)
             raise NotImplementedError("one sided epr share not implemented yet")
         
         # TODO: implement nc functionality
         # nc = globals.args.p2_nc
         for qubit_index in self.curr_qubit_channel_assignment.keys():
             to_node, channel_num = self.curr_qubit_channel_assignment[qubit_index]
-            q1, q2 = self._gen_epr_pair()
+            q1, q2 = quantum.gen_epr_pair()
             self.node.qmemory.put(q1, positions=qubit_index)
             self.send_qubit(to_node, q2, channel_num)
             self.send_message(
                 to_node, 
                 message=self._gen_message_packet(
-                    msg_type='ebit-sent',
-                    src_name=self.name,
-                    dst_name=to_node,
-                    conn_num=channel_num,
-                    ),
+                        msg_type=globals.MSG_TYPE.ebit_sent,
+                        src_name=self.name,
+                        dst_name=to_node,
+                        conn_num=channel_num,
+                        ),
                 )
                
     def _neighbour_responsible_for_ebit(self, neighbour_name):
-        bigger_id_node_name = neighbour_name if int(neighbour_name[1:]) > int(self.name[1:]) else self.name
+        # bigger_id_node_name = neighbour_name if int(neighbour_name[1:]) > int(self.name[1:]) else self.name
+        bigger_id_node_name = neighbour_name if neighbour_name > self.name else self.name
         if bigger_id_node_name == neighbour_name:
             return True
         return False
@@ -294,13 +351,6 @@ class NodeEntity(pydynaa.Entity):
         
         return use_this_nodes_pair
 
-    def _gen_epr_pair(self):
-        q1, q2 = ns.qubits.create_qubits(2)
-        ns.qubits.operate(q1, ns.H)
-        ns.qubits.operate([q1, q2], ns.CNOT)
-        
-        return q1, q2
-
     def _qpass_p2_alg(self):
         # TODO: could add a processing time delay here since the qpass p2 alg is supposed to run on each node. Im just running it on the NIS at the beginning of each ts so avoid running the exact same thing multiple times.
         assign_channels, major_paths = self.nis.qpass_p2_result
@@ -315,140 +365,463 @@ class NodeEntity(pydynaa.Entity):
         # TODO: do this by sending messages through connections and listening for events
         # TODO: we dont have a direct connection to NIS right? so if we are getting this through the internet then there might be some delay (probably doesnt matter since its at the very start anyway)
         self.sd_pairs = self.nis.curr_sd_pairs
-        self.curr_role = self._role()
 
         p1_delay = 1 # TODO: input param?
         self._schedule_after(p1_delay, NodeEntity.p1_done_evtype)
 
-    def _p2(self):
+    def _p2(self, _):
         # Qubit Assignment / External Phase
         def start_p2(_):
             nonlocal self
             print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p2 start.")
-            # # Test: # TODO: remove this code
-            # # <>
-            # if self.name == 'n1' and self.curr_ts==3:
-            #     self.network.send_message(self.name, 'n5', message='hello')
-            #     q = ns.qubits.create_qubits(1, no_state=True)
-            #     print(f'n1: {q}')
-            #     self.network.send_qubit(self.name, 'n5', qubit=q)
-            #     q2 = ns.qubits.create_qubits(1, no_state=True)
-            #     print(f'n1: {q2}')
-            #     self.send_qubit('n2', q2, 2)
-            
-            # if self.name == 'n4' and self.curr_ts==4:
-            #     self.send_message('n8', 'hey')
-            #     q = ns.qubits.create_qubits(1, no_state=True)
-            #     print(f'n4: {q}')
-            #     self.send_qubit('n8', q)
-            # # </>
 
-            if globals.args.alg is globals.ALGS.QPASS:
+            if globals.args.alg in [globals.ALGS.SLMPG, globals.ALGS.SLMPL]:
+                pass # SLMP tries local links on all edges so no processing here
+            elif globals.args.alg is globals.ALGS.QPASS:
                 # TODO: could add a processing time delay here since the qpass p2 alg is supposed to run on each node. Im just running it on the NIS at the beginning of each ts so avoid running the exact same thing multiple times.
                 assign_channels, major_paths = self._qpass_p2_alg()
                 recovery_paths = None # p2 also needs to return this. used in p4
-            else:
+            elif globals.args.alg is globals.ALGS.QCAST:
                 assign_channels, major_paths, recovery_paths = self._qcast_p2_alg()
             
-            self.major_paths = major_paths
-            self.curr_qubit_channel_assignment = {} # key = memory index for the qubit. value = num corresponding to channels (starts at 0)
-            qubit_assignment = []
-            for u, v in assign_channels:
-                num_channels = assign_channels[(u, v)]
-                if self.name in [u, v]: # checking if this node is connected to this edge.
-                    send_to = u if self.name == v else v
-                    for c in range(num_channels):
-                        if qubit_assignment.count(send_to) < self.network.nx_graph[u][v]["width"]:
-                            # TODO: there may be a small issue with qpass p2 alg. it can assign more qubits on an edge than its width (i think this happens only for partial paths). Not sure what to do other than this if statement or spending time into that algorithm in detail.
-                            qubit_assignment.append(send_to)
+
+            if globals.args.alg in [globals.ALGS.QPASS, globals.ALGS.QCAST]: # TODO: this if statement doesnt have to be here. The following part should be common to all 4 algs. Right now the input/output to p2 algs needs to be adjusted slightly. fix this
+                self.major_paths = major_paths
+                self.curr_qubit_channel_assignment = {} # key = memory index for the qubit. value = num corresponding to channels (starts at 0)
+                qubit_assignment = []
+                for u, v in assign_channels:
+                    num_channels = assign_channels[(u, v)]
+                    if self.name in [u, v]: # checking if this node is connected to this edge.
+                        send_to = u if self.name == v else v
+                        for c in range(num_channels):
+                            if qubit_assignment.count(send_to) < self.network.nx_graph[u][v]["width"]:
+                                # TODO: there may be a small issue with qpass p2 alg. it can assign more qubits on an edge than its width (i think this happens only for partial paths). Not sure what to do other than this if statement or spending time into that algorithm in detail.
+                                qubit_assignment.append(send_to)
             
-            # TODO: the following is not v efficient. write better code:
-            qubit_mem_index = -1
-            nodes_to_sent_to = list(set(qubit_assignment)) # list of unique nodes
-            qubit_and_channel_assignmets = []
-            for node in nodes_to_sent_to:
-                for channel_num in range(qubit_assignment.count(node)):
-                    qubit_and_channel_assignmets.append((node, channel_num))
-            for n, c in qubit_and_channel_assignmets:
-                qubit_mem_index += 1
-                self.curr_qubit_channel_assignment[qubit_mem_index] = (n, c)
+                # TODO: the following is not v efficient. write better code:
+                qubit_mem_index = -1
+                nodes_to_sent_to = list(set(qubit_assignment)) # list of unique nodes
+                qubit_and_channel_assignmets = []
+                for node in nodes_to_sent_to:
+                    for channel_num in range(qubit_assignment.count(node)):
+                        qubit_and_channel_assignmets.append((node, channel_num))
+                for n, c in qubit_and_channel_assignmets:
+                    qubit_mem_index += 1
+                    self.curr_qubit_channel_assignment[qubit_mem_index] = (n, c)
+            
+            if globals.args.alg in [globals.ALGS.SLMPG, globals.ALGS.SLMPL]:
+                self.major_paths = None # Not applicable
+                self.curr_qubit_channel_assignment = {} # key = memory index for the qubit. value = num corresponding to channels (starts at 0)
+                # in slmp, all nodes attempt to establish links with each of their neighbours:
+                qubit_mem_index = -1
+                for neighbour in self.imm_neighbours:
+                    qubit_mem_index += 1
+                    self.curr_qubit_channel_assignment[qubit_mem_index] = (neighbour.name, 0) # slmp does have have explicitly defined "widths". so just channel num 0
+                    # TODO: support width in SLMP. count any parallel edges in the graph (when reading input graph -- not here) and consider that width. then just try to establish link as many times as the width.
+
             self._establish_links()
         
-        self._wait_once(
-            event_type = NodeEntity.p1_done_evtype,
-            entity = self,
-            handler = pydynaa.EventHandler(start_p2),
-        )
+        start_p2(None)
 
-        p2_delay_after_timeout = 10 # TODO: input param?
+        p2_delay_after_timeout = 100 # TODO: input param?
         timeout = globals.args.link_establish_timeout
         self._schedule_after(timeout+p2_delay_after_timeout, NodeEntity.p2_done_evtype)
 
-    def _p3(self):
+    def _p3(self, _):
         # Exchange Link State
         def start_p3(_):
             nonlocal self
             print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p3 start.")
             self._gen_final_link_state() # see which ebits to use. discard one of the ebits where both side were success
             
-            # TODO: maybe. Add an option to send through the internet/NIS (larger delays, uncertain delays etc)
-            # To send directly through neighbours, create a message and send it to next neighbour in the shortest path who forwards it further. All nodes know the topology. Also, might want to add that drop any message from an earlier ts.
-            # Assuming no message drops? # TODO: would be pretty neat to add that too (more realistic)
-            
-            for k_neighbour in self.k_hop_neighbours:
-                send_through_node = self.network.get_node(k_neighbour.path_to[1]).entity
-                msg_packet = self._gen_message_packet(msg_type='link-state', src_name=self.name, dst_name=k_neighbour.name, dst_path=k_neighbour.path_to, curr_ts=self.curr_ts, link_state=self.link_state)
-                
-                self.send_message(send_through_node.name, msg_packet)
-            
-            # TODO: working with k=1 initially. so need to implement forwarding/direct sending via internet/NIS or whatever
-            # receive other's packets -- we are assuming no packet loss so we can just move on to phase 4 where we can look at message queue and save other's link states.
-        
-        self._wait_once(
-            event_type = NodeEntity.p2_done_evtype,
-            entity = self,
-            handler = pydynaa.EventHandler(start_p3),
-        )
+            if globals.args.alg is globals.ALGS.SLMPG: # in SLMPl only the two nodes across the link know about that link status. so no sharing.
 
-        p3_delay = 30 # TODO: input param? # this delay includes the delay for p1, and p2
+                # TODO: maybe. Add an option to send through the internet/NIS (larger delays, uncertain delays etc)
+                # To send directly through neighbours, create a message and send it to next neighbour in the shortest path who forwards it further. All nodes know the topology. Also, might want to add that drop any message from an earlier ts.
+                # Assuming no message drops? # TODO: would be pretty neat to add that too (more realistic)
+                
+                for k_neighbour in self.k_hop_neighbours:
+                    send_through_node = self.network.get_node(k_neighbour.path_to[1]).entity
+                    msg_packet = self._gen_message_packet(msg_type=globals.MSG_TYPE.link_state, src_name=self.name, dst_name=k_neighbour.name, path=k_neighbour.path_to, curr_ts=self.curr_ts, link_state=self.link_state)
+                    
+                    self.send_message(send_through_node.name, msg_packet)
+                
+                # TODO: Sending to next hop on path right now. maybe an option for sending via internet/NIS or whatever should be implemented
+                # TODO: we are assuming no packet loss so we can just move on to phase 4 where we can look at message queue and save other's link states. Maybe packet losses should be added as an option?
+           
+            elif globals.args.alg is globals.ALGS.SLMPL:
+                # In SLMPl, only the two nodes across an edge know about the status of the local link. so nothing to do here (final link state already generated above)
+                pass
+
+            elif globals.args.alg is globals.ALGS.QPASS:
+                pass # TODO: will probably be mostly the same as SLMPG. use that if statement or write new code if changes needed.
+
+            elif globals.args.alg is globals.ALGS.QCAST:
+                pass # TODO: will probably be mostly the same as SLMPG. use that if statement or write new code if changes needed.
+        
+        start_p3(None)
+
+        p3_delay = 100 # TODO: input param? # this delay includes the delay for p1, and p2
         self._schedule_after(p3_delay, NodeEntity.p3_done_evtype)
 
-    def _p4(self):
+    def _p4(self, _):
         # Place internal link / Internal Phase
         def start_p4(_):
             nonlocal self
             print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p4 start.")
+            # print(self.link_state)
+            # print(self.neighbours_link_state)
+            if globals.args.alg is globals.ALGS.SLMPG:
+                links_graph = self._gen_links_graph(self.network.nx_graph, self.neighbours_link_state)
+                sd_pairs = [(pair[0], pair[1]) for pair in self.sd_pairs] # self.sd_pairs is a list of (s, d, state)
+                print(f"sd pairs: {sd_pairs}")
+                paths = self._slmpg_path_finder(links_graph, sd_pairs)
+                role_for_path = self._role(paths)
+                ROLES = globals.ROLES
+                for i in range(len(paths)): # TODO: rn it finds multiple paths for a single src-dst pair. it should only calculate 1 path from the links-graph for each qubit that has to be sent
+                # for i in [0]:
+                # for i in [1]:
+                    role = role_for_path[i]
+                    if role in [ROLES.REPEATER, ROLES.DESTINATION]:
+                        prev_node_name = paths[i][paths[i].index(self.name) - 1]
+                        src_name = paths[i][0]
+                        if prev_node_name == src_name: # then this node is the first repeater on the path
+                            # this node is the first repeater on the path
+                            if role is not ROLES.DESTINATION: # if this node is dest and prev node on path is source then already have e2e ebits. handled that later
+                                self._swap(paths[i])
+                            else: # case when src and dst are neighbours 
+                                # source listening for the trigger of the following event. once its triggered it will send teleport the qubit
+                                self._schedule_now(NodeEntity.e2e_ready_evtype)
+                        else:
+                            # wait for previous node on path to send complete its part of swapping and send you measurements
+                            # when the message packet containing the corrections is received, the handler will trigger a "self.corrections_received_evtype" event
 
-        self._wait_once(
-            event_type = NodeEntity.p3_done_evtype,
-            entity = self,
-            handler = pydynaa.EventHandler(start_p4),
-        )
+                            evtype = self.corrections_received_evtype
+                            entity = self
+                            is_dest = True if role is ROLES.DESTINATION else False # in case node is the destination, _apply_corrections will schedule an event e2e_ready_evtype so that source sends the qubit
+                            params = [is_dest, paths[i]]
+
+                            self._set_event_handler_params(evtype, entity, params)
+
+                            self._wait_once(
+                                    event_type = evtype,
+                                    entity = entity,
+                                    handler = pydynaa.EventHandler(self._apply_corrections),
+                                )
+
+                    elif role is ROLES.SOURCE:
+                        # wait for a signal from dest that swapping is done
+                        dst_name = paths[i][-1]
+                        evtype = NodeEntity.e2e_ready_evtype
+                        entity = self.network.get_node(dst_name).entity
+                        params = paths[i]
+                        self._set_event_handler_params(evtype, entity, params)
+
+                        self._wait_once(
+                            event_type = evtype,
+                            entity = entity,
+                            handler = pydynaa.EventHandler(self._teleport_qubit),
+                        )
+                    else:
+                        # nothing to do for this path role is ROLES.NO_TASK
+                        pass
+
+                    # if role is ROLES.DESTINATION:
+                    #     # apart from swapping. a last handler also needs to be set up to receive the data qubit from the src node
+                    #     src_name = paths[i][0]
+                    #     self._wait_once(
+                    #             event_type = self.corrections_received_evtype,
+                    #             entity = self.network.get_node(src_name).entity,
+                    #             handler = pydynaa.EventHandler(self._apply_corrections),
+                    #         )
+            elif globals.args.alg is globals.ALGS.SLMPL:
+                sd_pairs = [(pair[0], pair[1]) for pair in self.sd_pairs] # self.sd_pairs is a list of (s, d, state)
+                print(f"sd pairs: {sd_pairs}")
+
+                for pair_num in range((len(sd_pairs))):
+                    src = sd_pairs[pair_num][0]
+                    dst = sd_pairs[pair_num][1]
+
+                    linked_n_nodes = set() # neighbour nodes that you have links with
+                    for link in self.link_state['final']:
+                        node1, node2, _ = link
+                        linked_n_nodes.add(node1)
+                        linked_n_nodes.add(node2)
+                    linked_n_nodes = list(linked_n_nodes)
+                    linked_n_nodes.remove(self.name) # the way ive done it, the list would also contain self.name. remove it.
+                    
+                    # lists to store distance of a linked neighbour to src/dst:
+                    d_src = []
+                    d_dst = []
+
+                    for n in linked_n_nodes:
+                        d_src.append((n, self._slmpl_calc_dist(n, src)))
+                        d_dst.append((n, self._slmpl_calc_dist(n, dst)))
+                    
+                    d_src.sort(key=lambda elem: elem[1]) # in the paper, if two neighbours have same d_src and d_dst then an unbiased coin toss is used to select one. That aspect is missing here since same values are sorted in some other order. TODO: take a look later
+                    d_dst.sort(key=lambda elem: elem[1])
+
+                    # local strategy part:
+                    if len(linked_n_nodes) <= 1: # if you dont have at least 2 linked neighbours then you cant swap.
+                        pass # nothing can be done
+                    else:
+                        # find the pair of best 2 neighbours (closest to src and dst). and swap them. move on to next 2 and so on. stop if <= 1 neighbours left
+                        while True: # TODO: if you have multiple links with the same neighbour then this is probably not as straightforward.
+                            try:
+                                closest_to_src, _ = d_src.pop(0)
+                                closest_to_dst, _ = d_dst.pop(0) # TODO: question: what if the same node is closest to both src and dst. might need some sort of a check
+                                self._swap([closest_to_src, self.name, closest_to_dst]) # param is a path since i made it for slmpg first. so need to pass a path like this
+                            except IndexError:
+                                break # we get there when are no more pairs to be made
+
+                
+                temp = 0
+            elif globals.args.alg is globals.ALGS.QPASS:
+                pass
+            elif globals.args.alg is globals.ALGS.QCAST:
+                pass
+
+        start_p4(None)
 
         p4_delay = 1 # TODO: input param?
         self._schedule_after(p4_delay, NodeEntity.p4_done_evtype)
     
-    def _role(self):
+    def _store_corrections(self, msg_packet):
+        KEYS = globals.MSG_KEYS
+        path = msg_packet[KEYS.PATH]
+        m0, m1 = msg_packet[KEYS.CORRECTIONS]
+        data_qubit_state = msg_packet[KEYS.DATA_QUBIT_STATE]
+        sender_name = msg_packet[KEYS.SRC]
+
+    
+        if data_qubit_state is None: # regular case
+            evtype = self.corrections_received_evtype
+            entity = self
+            params = (sender_name, m0, m1)
+            
+            if globals.args.alg is globals.ALGS.SLMPL: # TODO: its getting messy to have separate cases for diff algs. find common stuff and make as general functions as possible
+                # in slmpg the node is already waiting for the following event. but in slmpl its not set up to wait. so just add code for that here.
+                is_dest = False # in case node is the destination, _apply_corrections will schedule an event e2e_ready_evtype so that source sends the qubit
+                params = [is_dest, path]
+                self._set_event_handler_params(evtype, entity, params)
+                self._wait_once(
+                        event_type = evtype,
+                        entity = entity,
+                        handler = pydynaa.EventHandler(self._apply_corrections),
+                    )
+                
+            self._set_event_handler_params(evtype, entity, params)
+            self._schedule_now(evtype)
+        else:
+            # case when received corrections of the data qubit/teleported qubit
+            self._receive_teleported_qubit(m0, m1, data_qubit_state, path)
+
+    def _get_ebit_shared_with(self, node_name):
+        # returns the ebit and also returns the ebit's index in main qmem or conn mem. also returns whether this self.node's ebit is used or not
+        ebit = None
+
+        for link in self.link_state['final']:
+            if link[0] == node_name:
+                using_my_ebit = False
+                channel_num = link[2]
+                break
+            elif link[1] == node_name:
+                using_my_ebit = True
+                channel_num = link[2]
+                break
+        
+        qmem = None
+        if using_my_ebit:
+            qubit_mem_index = [n.name for n in self.imm_neighbours].index(node_name)
+            qmem = self.node.qmemory
+        else:
+            conn_qmem_label = self.network.gen_label(node_name, self.name, of=globals.CONN_CHANN_LABELS_FN_PARAM.CONN_QMEM, num=channel_num)
+            conn_qmem = self.node.subcomponents[conn_qmem_label]
+            qmem = conn_qmem
+            qubit_mem_index = 0 # only 1 position for connection memory on each node
+        
+        ebit = qmem.mem_positions[qubit_mem_index].get_qubit(remove=True)
+        return ebit, qubit_mem_index, using_my_ebit
+
+    def _role(self, paths):
         # returns the enum for source, destination, or repeater as per the role in this ts. Note that source and destination also perform the same repeating operations but they just do not have anything after p4.
         ROLES = globals.ROLES
-        for s,d in self.sd_pairs:
-            if self.name == s:
-                return ROLES.SOURCE
-            if self.name == d:
-                return ROLES.DESTINATION
-        return ROLES.REPEATER
+        pathwise_roles = [] # will store this nodes' role for each path
+        for path in paths:
+            if self.name not in path:
+                pathwise_roles.append(ROLES.NO_TASK)
+            else:
+                if path[0] == self.name:
+                    # is source
+                    pathwise_roles.append(ROLES.SOURCE)
+                elif path[-1] == self.name:
+                    pathwise_roles.append(ROLES.DESTINATION)
+                else:
+                    pathwise_roles.append(ROLES.REPEATER)
+        
+        return pathwise_roles
 
-    def _send_data_qubit(self):
-        if self.curr_role is not globals.ROLES.SOURCE:
-            return
-        
-        pass # TODO
+    def _swap(self, path):
+        prev_node_name = path[path.index(self.name) - 1]
+        next_node_name = path[path.index(self.name) + 1]
+        src_side_ebit, _, _ = self._get_ebit_shared_with(prev_node_name)
+        dst_side_ebit, _, _ = self._get_ebit_shared_with(next_node_name)
+        m0, m1 = quantum.prepare_corrections(src_side_ebit, dst_side_ebit)
+        self.send_message(
+            next_node_name, 
+            message=self._gen_message_packet(
+                    msg_type=globals.MSG_TYPE.corrections,
+                    src_name=self.name,
+                    dst_name=next_node_name,
+                    path=path,
+                    corrections=(m0, m1)
+                    ),
+            )
     
-    def _receive_data_qubit(self):
-        if self.curr_role is not globals.ROLES.DESTINATION:
-            return
+    def _get_data_qubit_state(self, src_name, dst_name):
+        for s, d, state in self.sd_pairs:
+            if s == src_name and d == dst_name:
+                return state
+        return None
+
+    def _teleport_qubit(self, ev):
+        params = self._get_event_handler_params(ev.type, ev.source)
+        path = params[0]
+        dst_name = path[-1]
+        data_qubit_state = self._get_data_qubit_state(self.name, dst_name)
+        data_qubit = quantum.generate_data_qubit(data_qubit_state)
+        e2e_ebit, _, _ = self._get_ebit_shared_with(path[1])
+        m0, m1 = quantum.prepare_corrections(data_qubit, e2e_ebit)
+        self.send_message(
+            dst_name, 
+            message=self._gen_message_packet(
+                    msg_type=globals.MSG_TYPE.corrections,
+                    src_name=self.name,
+                    dst_name=dst_name,
+                    corrections=(m0, m1),
+                    data_qubit_state=data_qubit_state,
+                    path=path,
+                    ),
+            send_directly=False, # src and dest may or may not be neighbours. so letting the send_message figure out the next hop itself
+            )
+
+    def _apply_corrections(self, ev):
+        params = self._get_event_handler_params(ev.type, ev.source)
+        is_dest, path = params[0]
+        sender_name, m0, m1 = params[1]
+        ebit, index, using_mine = self._get_ebit_shared_with(sender_name)
+        teleported_qubit, _ = quantum.apply_corrections(ebit, (m0, m1))
         
-        pass # TODO
+        # put the teleported qubit back into memory:
+        if using_mine: # then put into main qmem
+            qmem = self.node.qmemory
+        else:   # put in conn qmem
+            conn_qmem_label = self.network.gen_label(sender_name, self.name, of=globals.CONN_CHANN_LABELS_FN_PARAM.CONN_QMEM, num=0) # TODO: channel num is hardcodded
+            qmem = self.node.subcomponents[conn_qmem_label]
+        qmem.put(teleported_qubit, positions=index)
+
+        if not is_dest:
+            self._swap(path)
+            print(f" sim_time = {ns.sim_time():.1f}: {self.name}: swapped ebit after receiving corrections from {sender_name}")
+
+        if is_dest: # destination node has the extra step to let source node know that they share an e2e ebit. so schedule a e2e_ready_evtype event
+            self._schedule_now(NodeEntity.e2e_ready_evtype)
+
+    def _receive_teleported_qubit(self, m0, m1, data_qubit_state, path):
+        e2e_ebit, _, _ = self._get_ebit_shared_with(path[-2])
+        teleported_qubit, fidelity = quantum.apply_corrections(e2e_ebit, (m0, m1), original_state=data_qubit_state)
+        print(f" sim_time = {ns.sim_time():.1f}: {self.name}: received the data qubit with fidelity {fidelity:.3f}")
+
+    def _gen_links_graph(self, og_graph, link_states: list):
+        # generates an nx graph comprising of successful links (edges over which epr pairs have been shared successfully)
+        links_graph = nx.Graph()
+        for n in link_states.keys():
+            edges_list = link_states[n]['final']
+            for e in edges_list:
+                links_graph.add_edge(e[0], e[1], channel_num=e[2], length=og_graph[e[0]][e[1]]['length'])
+        return links_graph
+
+    def _slmpg_path_finder(self, links_graph, sd_pairs):
+        # TODO: multi flow stuff
+        G = copy.deepcopy(links_graph)
+        paths = []
+
+        def edges_of_path(p):
+            edge_path = []
+            for i in range(1, len(p)):
+                edge_path.append((p[i-1], p[i]))
+            return edge_path
+        
+        for s, d in sd_pairs:
+            while True:
+                try:
+                    p = nx.shortest_path(G, source=s, target=d, weight='length')
+                    paths.append(list(p))
+                    G.remove_edges_from(edges_of_path(p))
+                except nx.NetworkXNoPath: # all paths found
+                    break
+        return paths
+
+    def _set_event_handler_params(self, ev_type, ev_src, params):
+        entity = ev_src
+        key = (ev_type, entity)
+        val = params
+        self.events_msg_passing.setdefault(key,[]).append(val)
+    
+    def _get_event_handler_params(self, ev_type, ev_src):
+        return self.events_msg_passing.pop((ev_type, ev_src), None)
+
+    def _slmpl_calc_dist(self, node1, node2, method="L2"):
+        # method = "L1" # TODO: parameterize method (L1 norm/ L2 norm/ something else)
+        # method = "L2"
+        method = "shortest_path_length" 
+        # TODO: this is hardcodded for 4x4 grid right now
+        def delta_x(n1, n2):
+            num1 = int(n1[1:])
+            num2 = int(n2[1:])
+
+            counter = 1
+            for n in [num1, num2]:
+                if n not in [1, 2, 3, 4]:
+                    if n in [13, 14, 15, 16]:
+                        n -= 4
+                    if n in [9, 10, 11, 12]:
+                        n -= 4
+                    if n in [5, 6, 7, 8]:
+                        n -= 4
+                if counter == 1:
+                    num1 = n 
+                else:
+                    num2 = n 
+                counter += 1
+            return abs(num1 - num2)
+
+        def delta_y(n1, n2):
+            num1 = int(n1[1:])
+            num2 = int(n2[1:])
+
+            counter = 1
+            for n in [num1, num2]:
+                if n not in [1, 5, 9, 13]:
+                    if n in [4, 8, 12, 16]:
+                        n -= 1
+                    if n in [3, 7, 11, 15]:
+                        n -= 1
+                    if n in [2, 6, 10, 14]:
+                        n -= 1
+                if counter == 1:
+                    num1 = n 
+                else:
+                    num2 = n 
+                counter += 1
+            return int(abs((num1 - num2)/4))
+
+        if method == 'L2':
+            return sqrt((delta_x(node1, node2)**2) + (delta_y(node1, node2)**2))
+        if method == 'L1':
+            return delta_x(node1, node2) + delta_y(node1, node2)
+        if method == "shortest_path_length": # not in the paper. just adding it because why not
+            return nx.shortest_path_length(self.network.nx_graph, source=node1, target=node2)
 
 class NIS(pydynaa.Entity): # The Network Information Server
     new_ts_evtype = pydynaa.EventType("NEW_TIMESLOT", "A new timeslot has begun.")
@@ -462,10 +835,16 @@ class NIS(pydynaa.Entity): # The Network Information Server
         self.total_num_ts = globals.args.num_ts
         self.offline_paths = {} # candidate paths for QPASS -- generated by yen's alg at the very start before ts=1
 
-        if globals.args.alg is globals.ALGS.QPASS:
+        if globals.args.alg is globals.ALGS.SLMPG:
+            pass
+        elif globals.args.alg is globals.ALGS.SLMPL:
+            pass
+        elif globals.args.alg is globals.ALGS.QPASS:
             self._run_yens_alg()
+        elif globals.args.alg is globals.ALGS.QCAST:
+            raise NotImplementedError("QCAST not implemented yet.")
         else:
-            raise NotImplementedError("QCAST not implemented yet")
+            raise NotImplementedError("Unknown algorithm selected.")
 
         self._wait(
                 event_type = NIS._init_new_ts_evtype, # Only events of the given event_type will match the filter.
@@ -492,7 +871,8 @@ class NIS(pydynaa.Entity): # The Network Information Server
                 while True:
                     d = random.choice(node_names)
                     if s != d:
-                        this_ts_sds.append((s, d))
+                        state = random.choice(list(quantum.data_qubit_states.keys()))
+                        this_ts_sds.append((s, d, state))
                         break
 
             tm.append(this_ts_sds)
@@ -505,14 +885,16 @@ class NIS(pydynaa.Entity): # The Network Information Server
     def _new_ts(self, _):
         self.curr_ts += 1
         self.curr_sd_pairs = self._this_ts_sd_pairs()
+        
         if globals.args.alg is globals.ALGS.QPASS:
             self._run_qpass_p2_alg()
+        
         self._schedule_now(NIS.new_ts_evtype)
 
         # schedule the event for start of the next timeslot (unless currently in the last ts):
         if self.curr_ts < globals.args.num_ts:
             # TODO: first param of the following (== time slot length)
-            self._schedule_after(100, NIS._init_new_ts_evtype)
+            self._schedule_after(10000, NIS._init_new_ts_evtype) # TODO: parameterize the length of timeslot
 
     def _this_ts_sd_pairs(self):
         return self.traffic_matrix[self.curr_ts - 1] # -1 because index 0 stores sd pairs for ts=1 and so on.
@@ -665,7 +1047,8 @@ class NIS(pydynaa.Entity): # The Network Information Server
             return L_C, L_P
         
         nw = self.network
-        sd_pairs_list = self.curr_sd_pairs # = list of (s, d)
+        # self.curr_sd_pairs is list of (s, d, state)
+        sd_pairs_list = [(pair[0], pair[1]) for pair in self.curr_sd_pairs]
         sd_pair_to_offline_path_map = self.offline_paths # dict keyed by (s, d). val = list of lists with each list being a path (path is list of nodes in the path includes src and dest)
         
         L_C, L_P = qpass_p2_alg(

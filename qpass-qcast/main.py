@@ -1,5 +1,5 @@
 # import globals
-from entities import NodeEntity, NIS
+from entities import NIS
 import netsquid as ns
 
 def setup():
@@ -10,29 +10,8 @@ def setup():
 
 def main() -> None:
     setup() 
-
-    # basic testing
-    # from network import Network
-    # from network_topologies import slmp_grid_4x4
-    # nw = Network()
     
-    # print(nw.nodes)
-    # nodes = [nw.get_node(name) for name in slmp_grid_4x4.keys()]
-    # print(nodes)
-    # print(nw.get_node('n3').ID)
-    # print(nw.get_connection('n1', 'n2'))
-    # print(nw.get_connection('n1', 'n2', label='dirConn. | n1<->n2 #3 | quantum'))
-    # for conn in nw.connections.values():
-    #     print(conn)
-    # print(nw.offline_paths[('n2', 'n1')][0])
-
-    #============#
-    #============#
-    #============#
-
-    # network fixed for now
-    from network import Network
-    from network_topologies import slmp_grid_4x4
+    from network import Network # this has to be here since it needs to be imported after set up sets some things up
     # create network object. (entities are part of each node property in the network object)
     nw = Network()
     node_names = [n for n in nw.node_names()]
@@ -54,19 +33,6 @@ def main() -> None:
 
     # start the controller/nis
     nis.start()
-    
-    # u = 'n16'
-    # v = 'n12'
-    # classic_label = f"dirConn. | {u}<->{v} | classical"
-    # # port_1, port_2 = nw.get_connected_ports(u, v, label=classic_label)
-    # # node_1 = nw.get_node(u)
-    # # node_2 = nw.get_node(v)
-    # # node_2.ports[port_2].tx_output("Test msg1!")
-    # channel = nw.get_connection(u, v, classic_label)
-    # channel.send("hello world!")
-    # items, delay = channel.receive()
-    # print(items)
-
 
     # start the simulation
     run_stats = ns.sim_run()
