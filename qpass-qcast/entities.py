@@ -478,8 +478,8 @@ class NodeEntity(pydynaa.Entity):
                 paths = self._slmpg_path_finder(links_graph, sd_pairs)
                 role_for_path = self._role(paths)
                 ROLES = globals.ROLES
-                for i in range(len(paths)): # TODO: rn it finds multiple paths for a single src-dst pair. it should only calculate 1 path from the links-graph for each qubit that has to be sent
-                # for i in [0]:
+                # for i in range(len(paths)): # TODO: rn it finds multiple paths for a single src-dst pair. it should only calculate 1 path from the links-graph for each qubit that has to be sent
+                for i in [0]:
                 # for i in [1]:
                     role = role_for_path[i]
                     if role in [ROLES.REPEATER, ROLES.DESTINATION]:
