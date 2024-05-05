@@ -581,6 +581,9 @@ class NodeEntity(pydynaa.Entity):
         serving_pair = msg_packet[KEYS.SERVING_PAIR]
         src_name, dst_name = serving_pair
 
+        if m0 is None and m1 is None: # is both m0 and m1 are None then the swap operation was a failure. so dont do anything
+            return            
+
         if self.name == dst_name: # case when this is dest node
             if self.name != path[-1]:
                 path.append(self.name)
@@ -670,6 +673,10 @@ class NodeEntity(pydynaa.Entity):
         src_side_ebit, _, _ = self._get_ebit_shared_with(prev_node_name)
         dst_side_ebit, _, _ = self._get_ebit_shared_with(next_node_name)
         m0, m1 = quantum.prepare_corrections(src_side_ebit, dst_side_ebit)
+        
+        if not self._swap_successful(): # q parameter
+            m0, m1 = None, None
+        
         self.send_message(
             next_node_name, 
             message=self._gen_message_packet(
@@ -854,6 +861,15 @@ class NodeEntity(pydynaa.Entity):
                     ),
             send_directly=False
             ) # the node receiving this message will run self._teleport_qubit()
+
+    def _swap_successful(self):
+        op_successful = True
+        q = globals.args.prob_swap_loss
+        r = random.randint(1, 100)
+        if r <= (q*100):
+            op_successful = False
+        
+        return op_successful
 
 class NIS(pydynaa.Entity): # The Network Information Server
     new_ts_evtype = pydynaa.EventType("NEW_TIMESLOT", "A new timeslot has begun.")

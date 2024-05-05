@@ -30,12 +30,13 @@ class Defaults: # The default values to use as arguments
     p_loss_length = 0
 
     # delay model params for quantum channels
-    qc_delay_model = CHANNEL_DELAY_MODEL.fibre # TODO: currently some is some bug due to how if it takes too long for the qubit to reach then a node assumes it didnt get it and 
+    qc_delay_model = CHANNEL_DELAY_MODEL.none # Need to be careful about the delays since if it is too much then the node will assume that it didnt get it. (TODO: parameterize this timeout)
     qc_delay_fixed = 0 # only used for fixed delay model
     qc_delay_mean = 0 # only used for gaussian delay model
     qc_delay_std = 0 # only used for gaussian delay model
 
     # delay model params for classical channels
+    # Need to be careful about the delays since if it is too much then the node will assume that it didnt get it. (TODO: parameterize this timeout)
     cc_delay_model = CHANNEL_DELAY_MODEL.none # using fixed model by default with delay = 1 ms. QPASS paper says that classical communications in such networks take around ~1 ms so using this value.
     cc_delay_fixed = 1 # only used for fixed delay model
     cc_delay_mean = 0 # only used for gaussian delay model
