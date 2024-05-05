@@ -94,16 +94,19 @@ class Network(ns_Network):
         u = network.get_node(u_name)
         v = network.get_node(v_name)
         
+        c_channel_model = self._gen_c_channel_model()
         c_conn_label = self.gen_label(u_name, v_name, of=label_options.CCONNECTION)
         c_conn = DirectConnection(
                 name = c_conn_label,
                 channel_AtoB = ClassicalChannel(
                                 name = self.gen_label(u_name, v_name, of=label_options.CCHANNEL),
                                 length=length,
+                                models=c_channel_model,
                             ),
                 channel_BtoA = ClassicalChannel(
                                 name = self.gen_label(v_name, u_name, of=label_options.CCHANNEL),
                                 length=length,
+                                models=c_channel_model,
                             ),
             )
         local_port_name, remote_port_name = network.add_connection(u, v, c_conn, label=c_conn_label)
@@ -123,22 +126,7 @@ class Network(ns_Network):
             u.add_subcomponent(QuantumMemory(qmem_name, num_positions=1))
             v.add_subcomponent(QuantumMemory(qmem_name, num_positions=1))
             
-            # q_channel_model = self._gen_q_channel_model()
-
-            if globals.args.error_model == 'none':
-                q_channel_model = None # options include delay_model (class DelayModel), quantum_noise_model, quantum_loss_model (class for the latter 2 is QuantumErrorModel).  quantum_loss_model has a model to use probability to lose qubit
-            elif globals.args.error_model == 'dephase':
-                # rate = 0.25
-                rate = globals.args.error_param
-                # is_time_independent = True
-                is_time_independent = True if globals.args.error_time_independent == 'yes' else False
-                q_channel_model = {"quantum_noise_model": ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=rate, time_independent=is_time_independent)}
-            elif globals.args.error_model == 'depolar':
-                # rate = 0.9
-                rate = globals.args.error_param
-                # is_time_independent = True
-                is_time_independent = True if globals.args.error_time_independent == 'yes' else False
-                q_channel_model = {"quantum_noise_model": ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=rate, time_independent=is_time_independent)}
+            q_channel_model = self._gen_q_channel_model()
             
             q_conn = DirectConnection(
                     name = q_conn_label,
@@ -223,28 +211,63 @@ class Network(ns_Network):
         this_conn_qmem = this_node.subcomponents[qmem_label]
         this_conn_qmem.put(qubit)
     
-    # def _gen_q_channel_model(self):
-    #     q_channel_model = {}
+    def _gen_q_channel_model(self):
+        q_channel_model = {}
 
-    #     MODEL_TYPES = globals.QCHANNEL_MODEL_TYPES
-    #     LOSS_MODELS = globals.QCHANNEL_LOSS_MODEL
-    #     NOISE_MODELS = globals.QCHANNEL_NOISE_MODEL
+        key_quantum_noise_model = globals.QCHANNEL_MODEL_TYPES.quantum_noise_model.name
+        key_quantum_loss_model = globals.QCHANNEL_MODEL_TYPES.quantum_loss_model.name
+        key_delay_model = globals.QCHANNEL_MODEL_TYPES.delay_model.name
+        
+        LOSS_MODELS = globals.QCHANNEL_LOSS_MODEL
+        NOISE_MODELS = globals.QCHANNEL_NOISE_MODEL
+        DELAY_MODELS = globals.CHANNEL_DELAY_MODEL
 
+        if (globals.args.noise_model is NOISE_MODELS.none) and (globals.args.loss_model is LOSS_MODELS.none) and (globals.args.qc_delay_model is DELAY_MODELS.none):
+            q_channel_model = None
+        else:
+            # setting the noise model first:
+            if globals.args.noise_model is NOISE_MODELS.none:
+                q_channel_model[key_quantum_noise_model] = None
+            elif globals.args.noise_model is NOISE_MODELS.dephase:
+                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=globals.args.noise_param, time_independent=globals.args.noise_time_independent)
+            elif globals.args.noise_model is NOISE_MODELS.depolar:
+                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=globals.args.noise_param, time_independent=globals.args.noise_time_independent)
+            
+            # setting the loss model:
+            if globals.args.loss_model is LOSS_MODELS.none:
+                q_channel_model[key_quantum_loss_model] = None
+            elif globals.args.loss_model is LOSS_MODELS.fibre:
+                q_channel_model[key_quantum_loss_model] = ns.components.models.qerrormodels.FibreLossModel(p_loss_init=globals.args.p_loss_init, p_loss_length=globals.args.p_loss_length)
 
+            # setting the delay model:
+            if globals.args.qc_delay_model is DELAY_MODELS.none:
+                q_channel_model[key_delay_model] = None
+            elif globals.args.qc_delay_model is DELAY_MODELS.fibre:
+                q_channel_model[key_delay_model] = ns.components.models.delaymodels.FibreDelayModel()
+            elif globals.args.qc_delay_model is DELAY_MODELS.fixed:
+                q_channel_model[key_delay_model] = ns.components.models.delaymodels.FixedDelayModel(delay=globals.args.qc_delay_fixed)
+            elif globals.args.qc_delay_model is DELAY_MODELS.gaussian:
+                q_channel_model[key_delay_model] = ns.components.models.delaymodels.GaussianDelayModel(delay_mean=globals.args.qc_delay_mean, delay_std=globals.args.qc_delay_std)
 
-    #     if globals.args.error_model == NOISE_MODELS.none:
-    #         q_channel_model = None # options include delay_model (class DelayModel), quantum_noise_model, quantum_loss_model (class for the latter 2 is QuantumErrorModel).  quantum_loss_model has a model to use probability to lose qubit
-    #     elif globals.args.error_model == NOISE_MODELS.dephase:
-    #         # rate = 0.25
-    #         rate = globals.args.error_param
-    #         # is_time_independent = True
-    #         is_time_independent = True if globals.args.error_time_independent == 'yes' else False
-    #         q_channel_model = {"quantum_noise_model": ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=rate, time_independent=is_time_independent)}
-    #     elif globals.args.error_model == NOISE_MODELS.depolar:
-    #         # rate = 0.9
-    #         rate = globals.args.error_param
-    #         # is_time_independent = True
-    #         is_time_independent = True if globals.args.error_time_independent == 'yes' else False
-    #         q_channel_model = {"quantum_noise_model": ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=rate, time_independent=is_time_independent)}
+        return q_channel_model
+    
+    def _gen_c_channel_model(self):
+        # Note: Netsquid only provides delay models for classical channels. It provides a base class for loss models but no ready-made loss model.
+        # Note 2: I figured that values in microsec would be more convenient so arg values are converted into ns since netsquid model params assume nano sec.
+        
+        ms_to_ns_factor = 1000 # to convert ms to ns, multiple the ms value by 1000.
+        c_channel_model = {}
+        key_delay_model = globals.QCHANNEL_MODEL_TYPES.delay_model.name
+        DELAY_MODELS = globals.CHANNEL_DELAY_MODEL
 
-    #     return q_channel_model
+        # setting the delay model:
+        if globals.args.cc_delay_model is DELAY_MODELS.none:
+            c_channel_model[key_delay_model] = None
+        elif globals.args.cc_delay_model is DELAY_MODELS.fibre:
+            c_channel_model[key_delay_model] = ns.components.models.delaymodels.FibreDelayModel()
+        elif globals.args.cc_delay_model is DELAY_MODELS.fixed:
+            c_channel_model[key_delay_model] = ns.components.models.delaymodels.FixedDelayModel(delay = globals.args.cc_delay_fixed * ms_to_ns_factor)
+        elif globals.args.cc_delay_model is DELAY_MODELS.gaussian:
+            c_channel_model[key_delay_model] = ns.components.models.delaymodels.GaussianDelayModel(delay_mean = globals.args.cc_delay_mean * ms_to_ns_factor, delay_std = globals.args.cc_delay_std * ms_to_ns_factor)
+
+        return c_channel_model

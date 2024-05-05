@@ -19,7 +19,7 @@ class EnumInParamAction(argparse.Action):
         # Generate choices from the Enum
         kwargs.setdefault("choices", tuple(e.value for e in enum_type))
 
-        super(EnumAction, self).__init__(**kwargs)
+        super(EnumInParamAction, self).__init__(**kwargs)
 
         self._enum = enum_type
 
@@ -62,4 +62,5 @@ CONN_CHANN_LABELS_FN_PARAM = Enum('CONN_CHANN_LABELS_FN_PARAM', ['CCHANNEL', 'QC
 
 QCHANNEL_MODEL_TYPES = Enum('QCHANNEL_MODEL_TYPES', ['delay_model', 'quantum_noise_model', 'quantum_loss_model', 'none']) # netsquid requires these exact strings when setting a model for a channel (except none is my own)
 QCHANNEL_NOISE_MODEL = Enum('QCHANNEL_NOISE_MODEL', ['none', 'dephase', 'depolar']) # models that can be used when 'quantum_noise_model' is selected as model type
-QCHANNEL_LOSS_MODEL = Enum('QCHANNEL_LOSS_MODEL', []) # models that can be used when 'quantum_loss_model' is selected as model type
+QCHANNEL_LOSS_MODEL = Enum('QCHANNEL_LOSS_MODEL', ['none', 'fibre']) # models that can be used when 'quantum_loss_model' is selected as model type
+CHANNEL_DELAY_MODEL = Enum('CHANNEL_DELAY_MODEL', ['none', 'fibre', 'gaussian', 'fixed']) # Applicable to both quantum and classical channels
