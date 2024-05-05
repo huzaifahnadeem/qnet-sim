@@ -472,7 +472,7 @@ class NodeEntity(pydynaa.Entity):
                 print(f"sd pairs: {sd_pairs}")
                 paths = self._slmpg_path_finder(links_graph, sd_pairs)
                 
-                # TODO:
+                # for testing:
                 # paths = [['n10', 'n6', 'n2', 'n3'], ['n10', 'n11', 'n7', 'n3'], ['n10', 'n9', 'n5', 'n6', 'n7', 'n8', 'n4', 'n3']] # getting diff orders so fixed for now
                 
                 role_for_path = self._role(paths)
@@ -588,7 +588,6 @@ class NodeEntity(pydynaa.Entity):
             if self.name != path[-1]:
                 path.append(self.name)
             self.e2e_paths_sofar.append(path) # not used. remove TODO
-            temp =1
 
         if data_qubit_state is None: # regular case
             if self._apply_corrections_and_swap_next(serving_pair, path, sender_name, m0, m1):
@@ -763,7 +762,7 @@ class NodeEntity(pydynaa.Entity):
                 links_graph.add_edge(e[0], e[1], channel_num=e[2], length=og_graph[e[0]][e[1]]['length'])
         return links_graph
 
-    def _slmpg_path_finder(self, links_graph, sd_pairs):
+    def _slmpg_path_finder(self, links_graph, sd_pairs): # TODO: i think this is quite inefficient.
         # TODO: multi flow stuff
         G = copy.deepcopy(links_graph)
         paths = []
@@ -784,7 +783,15 @@ class NodeEntity(pydynaa.Entity):
                     break
                 except nx.NodeNotFound: # if src/dst is not able to make link to any node
                     break
-        return paths
+        # the following sorting is important to make the list of paths consistent (deterministic list of paths) across nodes. If we dont do this then if there is more than 1 shortest path, the specific order of the shortest paths is not deterministic based on how networkx's shortest_path function works. so need to sort them deterministically.
+        path_w_weights = []
+        random.shuffle(paths) # if we dont do this then the consistency problem remains since during sorting one shortest path might be before/after the other and sorting might not switch the places
+        G = copy.deepcopy(links_graph)
+        for p in paths:
+            weight = nx.path_weight(G, path=p, weight='length')
+            path_w_weights.append((p, weight))
+        path_w_weights.sort(key=lambda tup: tup[1]) # sorts in place
+        return [tup[0] for tup in path_w_weights]
 
     def _set_event_handler_params(self, ev_type, ev_src, params):
         entity = ev_src
