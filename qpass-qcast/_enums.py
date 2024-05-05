@@ -1,7 +1,7 @@
 from enum import Enum
 import argparse
 
-class EnumAction(argparse.Action):
+class EnumInParamAction(argparse.Action):
     # from: https://stackoverflow.com/questions/43968006/support-for-enum-arguments-in-argparse
     """
     Argparse action for handling Enums

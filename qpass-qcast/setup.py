@@ -17,13 +17,11 @@ def get_args() -> None:
     config = globals.Defaults # TODO: add option to use a config file (would contain a class with properties exactly like globals.Default class)
 
     parser.add_argument('--seed', required=False, default=config.seed, type=int, help=f'The integer to use as the seed value for the netsquid and random libraries. Default set to {config.seed}.c')
-    parser.add_argument('--network', required=False, default=config.network_toplogy, choices=[nt.name.lower() for nt in globals.NET_TOPOLOGY], help=f'The network topology to use. Default set to {config.network_toplogy}.')
-    # parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
-    
-    parser.add_argument('--alg', required=False, default=config.algorithm, choices=[a.value for a in globals.ALGS], help=f'Choice between SLMPg, SLMPl, QPASS, and QCAST. Default set to {config.algorithm}.')
+    parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumInParamAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
+    parser.add_argument('--alg', required=False, default=config.algorithm, type=globals.ALGS, action=globals.EnumInParamAction, help=f'Choice between SLMPg, SLMPl, QPASS, and QCAST. Default set to {config.algorithm}.')
     parser.add_argument('--num_ts', required=False, default=config.num_ts, type=int, help=f'The total number of timeslots to run for. Default set to {config.num_ts}')
     parser.add_argument('--yen_n', required=False, default=config.yen_n, type=int, help=f'The starting number of offline paths to compute with yen\'s algorithm. Default set to {config.yen_n}.')
-    parser.add_argument('--yen_metric', required=False, default=config.yen_metric, choices=[a.value for a in globals.YEN_METRICS], help=f'The metric to use to compute path length in yen\'s algorithm. Default set to "{config.yen_metric.value}".')
+    parser.add_argument('--yen_metric', required=False, default=config.yen_metric, type=globals.YEN_METRICS, action=globals.EnumInParamAction, help=f'The metric to use to compute path length in yen\'s algorithm. Default set to "{config.yen_metric.value}".')
     parser.add_argument('--p3_hop', required=False, default=config.p3_hop, type=int, help=f'In phase 3 exchange link state to this many hop away neighbours. Default set to {config.p3_hop}.')
     parser.add_argument('--max_sd', required=False, default=config.max_sd_pairs_per_ts, type=int, help=f'Max number of S-D pairs in each timeslot (inclusive). Default set to {config.max_sd_pairs_per_ts}.')
     parser.add_argument('--min_sd', required=False, default=config.min_sd_pairs_per_ts, type=int, help=f'Min number of S-D pairs in each timeslot (inclusive). Default set to {config.min_sd_pairs_per_ts}.')
