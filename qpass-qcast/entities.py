@@ -41,8 +41,9 @@ class NodeEntity(pydynaa.Entity):
         self.k_hop_neighbours = [] # nodes that are <= k hops away
         self.imm_neighbours = [] # immediate neighbours (share an edge)
         self.connections = {}
-        self.corrections_received_evtype = pydynaa.EventType("RECEIVED CORRECTIONS", "Received some corrections to apply")
         self.events_msg_passing = {} # for passing parameters etc between a function and the handler function if needed (for the same entity not across)
+        self.swapped_nodes = [] # to keep track in SLMP local
+        self.e2e_paths_sofar = [] # for slmp local
 
     def set_nis_entity(self, nis):
         self.nis = nis
@@ -137,6 +138,8 @@ class NodeEntity(pydynaa.Entity):
         # TODO: discard connection qmem qubits from prev ts if any
         # self.measurements = []
         self.events_msg_passing = {}
+        self.swapped_nodes = []
+        self.e2e_paths_sofar = []
 
     def _new_ts(self, _):
         self._cleanup()
@@ -200,43 +203,35 @@ class NodeEntity(pydynaa.Entity):
             handler = pydynaa.EventHandler(handler),
         )
 
-    def _gen_message_packet(self, msg_type, src_name=None, dst_name=None, path=None, curr_ts=None, link_state=None, conn_num=None, ebit_received_successfully=None, corrections=None, data_qubit_state=None):
+    def _gen_message_packet(self, msg_type, src_name=None, dst_name=None, path=None, curr_ts=None, link_state=None, conn_num=None, ebit_received_successfully=None, corrections=None, data_qubit_state=None, serving_pair=None, corrections_via=None):
+        # note that src_name, dst_name in the parameters is for the original sender and final receiver of the message packet. serving_pair param is to specify who the e2e src and dst nodes are for which this message is being sent (to anyone)
         KEYS = globals.MSG_KEYS
         MSG_TYPE = globals.MSG_TYPE
-        msg_packet = {}
+        msg_packet = {
+            KEYS.TYPE: msg_type,
+            KEYS.SRC: src_name,
+            KEYS.DST: dst_name,
+        }
         if msg_type is MSG_TYPE.ebit_sent:
-            msg_packet = {
-                KEYS.TYPE: msg_type,
-                KEYS.SRC: src_name,
-                KEYS.DST: dst_name,
-                KEYS.CONN_NUM: conn_num,
-            }
+            msg_packet[KEYS.CONN_NUM] = conn_num
         elif msg_type is MSG_TYPE.ebit_received:
-            msg_packet = {
-                KEYS.TYPE: msg_type,
-                KEYS.SRC: src_name,
-                KEYS.DST: dst_name,
-                KEYS.CONN_NUM: conn_num,
-                KEYS.EBIT_RECV_SUCCESS: ebit_received_successfully,
-            }
+            msg_packet[KEYS.CONN_NUM] = conn_num
+            msg_packet[KEYS.EBIT_RECV_SUCCESS] = ebit_received_successfully
         elif msg_type is MSG_TYPE.link_state:
-            msg_packet = {
-                KEYS.TYPE: msg_type,
-                KEYS.SRC: src_name,
-                KEYS.DST: dst_name,
-                KEYS.TS: curr_ts,
-                KEYS.PATH: path, # not really needed but makes coding slightly easier.
-                KEYS.LINK_STATE: link_state,
-            }
+            msg_packet[KEYS.TS] = curr_ts
+            msg_packet[KEYS.PATH] = path
+            msg_packet[KEYS.LINK_STATE] = link_state
         elif msg_type is MSG_TYPE.corrections:
-            msg_packet = {
-                KEYS.TYPE: msg_type,
-                KEYS.SRC: src_name,
-                KEYS.DST: dst_name,
-                KEYS.PATH: path,
-                KEYS.CORRECTIONS: corrections,
-                KEYS.DATA_QUBIT_STATE: data_qubit_state,
-            }
+            if corrections_via is None:
+                corrections_via = [self.name]
+            msg_packet[KEYS.PATH] = path
+            msg_packet[KEYS.SERVING_PAIR] = serving_pair
+            msg_packet[KEYS.CORRECTIONS] = corrections
+            msg_packet[KEYS.DATA_QUBIT_STATE] = data_qubit_state
+            msg_packet[KEYS.CORRECTIONS_VIA] = corrections_via
+        elif msg_type is MSG_TYPE.e2e_ready:
+            msg_packet[KEYS.PATH] = path
+            msg_packet[KEYS.SERVING_PAIR] = serving_pair
         
         return msg_packet
 
@@ -360,7 +355,7 @@ class NodeEntity(pydynaa.Entity):
         raise NotImplementedError("QCAST not implemented yet")
 
     def _p1(self):
-        print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p1 start.")
+        # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p1 start.")
         # Receive S-D pairs from the NIS
         # TODO: do this by sending messages through connections and listening for events
         # TODO: we dont have a direct connection to NIS right? so if we are getting this through the internet then there might be some delay (probably doesnt matter since its at the very start anyway)
@@ -373,7 +368,7 @@ class NodeEntity(pydynaa.Entity):
         # Qubit Assignment / External Phase
         def start_p2(_):
             nonlocal self
-            print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p2 start.")
+            # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p2 start.")
 
             if globals.args.alg in [globals.ALGS.SLMPG, globals.ALGS.SLMPL]:
                 pass # SLMP tries local links on all edges so no processing here
@@ -431,7 +426,7 @@ class NodeEntity(pydynaa.Entity):
         # Exchange Link State
         def start_p3(_):
             nonlocal self
-            print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p3 start.")
+            # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p3 start.")
             self._gen_final_link_state() # see which ebits to use. discard one of the ebits where both side were success
             
             if globals.args.alg is globals.ALGS.SLMPG: # in SLMPl only the two nodes across the link know about that link status. so no sharing.
@@ -476,64 +471,30 @@ class NodeEntity(pydynaa.Entity):
                 sd_pairs = [(pair[0], pair[1]) for pair in self.sd_pairs] # self.sd_pairs is a list of (s, d, state)
                 print(f"sd pairs: {sd_pairs}")
                 paths = self._slmpg_path_finder(links_graph, sd_pairs)
+                
+                # TODO:
+                # paths = [['n10', 'n6', 'n2', 'n3'], ['n10', 'n11', 'n7', 'n3'], ['n10', 'n9', 'n5', 'n6', 'n7', 'n8', 'n4', 'n3']] # getting diff orders so fixed for now
+                
                 role_for_path = self._role(paths)
                 ROLES = globals.ROLES
-                # for i in range(len(paths)): # TODO: rn it finds multiple paths for a single src-dst pair. it should only calculate 1 path from the links-graph for each qubit that has to be sent
-                for i in [0]:
-                # for i in [1]:
+                for i in range(len(paths)):
                     role = role_for_path[i]
                     if role in [ROLES.REPEATER, ROLES.DESTINATION]:
                         prev_node_name = paths[i][paths[i].index(self.name) - 1]
                         src_name = paths[i][0]
+                        dst_name = paths[i][-1]
+                        serving_pair = (src_name, dst_name)
                         if prev_node_name == src_name: # then this node is the first repeater on the path
                             # this node is the first repeater on the path
                             if role is not ROLES.DESTINATION: # if this node is dest and prev node on path is source then already have e2e ebits. handled that later
-                                self._swap(paths[i])
+                                self._swap(serving_pair, paths[i])
                             else: # case when src and dst are neighbours 
-                                # source listening for the trigger of the following event. once its triggered it will send teleport the qubit
-                                self._schedule_now(NodeEntity.e2e_ready_evtype)
-                        else:
-                            # wait for previous node on path to send complete its part of swapping and send you measurements
-                            # when the message packet containing the corrections is received, the handler will trigger a "self.corrections_received_evtype" event
+                                self._send_e2e_ready_message(serving_pair, paths[i])
 
-                            evtype = self.corrections_received_evtype
-                            entity = self
-                            is_dest = True if role is ROLES.DESTINATION else False # in case node is the destination, _apply_corrections will schedule an event e2e_ready_evtype so that source sends the qubit
-                            params = [is_dest, paths[i]]
-
-                            self._set_event_handler_params(evtype, entity, params)
-
-                            self._wait_once(
-                                    event_type = evtype,
-                                    entity = entity,
-                                    handler = pydynaa.EventHandler(self._apply_corrections),
-                                )
-
-                    elif role is ROLES.SOURCE:
-                        # wait for a signal from dest that swapping is done
-                        dst_name = paths[i][-1]
-                        evtype = NodeEntity.e2e_ready_evtype
-                        entity = self.network.get_node(dst_name).entity
-                        params = paths[i]
-                        self._set_event_handler_params(evtype, entity, params)
-
-                        self._wait_once(
-                            event_type = evtype,
-                            entity = entity,
-                            handler = pydynaa.EventHandler(self._teleport_qubit),
-                        )
                     else:
                         # nothing to do for this path role is ROLES.NO_TASK
                         pass
 
-                    # if role is ROLES.DESTINATION:
-                    #     # apart from swapping. a last handler also needs to be set up to receive the data qubit from the src node
-                    #     src_name = paths[i][0]
-                    #     self._wait_once(
-                    #             event_type = self.corrections_received_evtype,
-                    #             entity = self.network.get_node(src_name).entity,
-                    #             handler = pydynaa.EventHandler(self._apply_corrections),
-                    #         )
             elif globals.args.alg is globals.ALGS.SLMPL:
                 sd_pairs = [(pair[0], pair[1]) for pair in self.sd_pairs] # self.sd_pairs is a list of (s, d, state)
                 print(f"sd pairs: {sd_pairs}")
@@ -541,41 +502,66 @@ class NodeEntity(pydynaa.Entity):
                 for pair_num in range((len(sd_pairs))):
                     src = sd_pairs[pair_num][0]
                     dst = sd_pairs[pair_num][1]
-
-                    linked_n_nodes = set() # neighbour nodes that you have links with
-                    for link in self.link_state['final']:
-                        node1, node2, _ = link
-                        linked_n_nodes.add(node1)
-                        linked_n_nodes.add(node2)
-                    linked_n_nodes = list(linked_n_nodes)
-                    linked_n_nodes.remove(self.name) # the way ive done it, the list would also contain self.name. remove it.
                     
-                    # lists to store distance of a linked neighbour to src/dst:
-                    d_src = []
-                    d_dst = []
+                    if self.name not in [src, dst]: # src and dst dont do these swaps
+                        linked_n_nodes = set() # neighbour nodes that you have links with
+                        for link in self.link_state['final']:
+                            node1, node2, _ = link
+                            linked_n_nodes.add(node1)
+                            linked_n_nodes.add(node2)
+                        linked_n_nodes = list(linked_n_nodes)
+                        linked_n_nodes.remove(self.name) # the way ive done it, the list would also contain self.name. remove it.
+                        
+                        # lists to store distance of a linked neighbour to src/dst:
+                        d_src = []
+                        d_dst = []
 
-                    for n in linked_n_nodes:
-                        d_src.append((n, self._slmpl_calc_dist(n, src)))
-                        d_dst.append((n, self._slmpl_calc_dist(n, dst)))
-                    
-                    d_src.sort(key=lambda elem: elem[1]) # in the paper, if two neighbours have same d_src and d_dst then an unbiased coin toss is used to select one. That aspect is missing here since same values are sorted in some other order. TODO: take a look later
-                    d_dst.sort(key=lambda elem: elem[1])
+                        for n in linked_n_nodes:
+                            d_src.append((n, self._slmpl_calc_dist(n, src)))
+                            d_dst.append((n, self._slmpl_calc_dist(n, dst)))
+                        
+                        d_src.sort(key=lambda elem: elem[1]) # in the paper, if two neighbours have same d_src and d_dst then an unbiased coin toss is used to select one. That aspect is missing here since same values are sorted in some other order. TODO: take a look later
+                        d_dst.sort(key=lambda elem: elem[1])
 
-                    # local strategy part:
-                    if len(linked_n_nodes) <= 1: # if you dont have at least 2 linked neighbours then you cant swap.
-                        pass # nothing can be done
-                    else:
-                        # find the pair of best 2 neighbours (closest to src and dst). and swap them. move on to next 2 and so on. stop if <= 1 neighbours left
-                        while True: # TODO: if you have multiple links with the same neighbour then this is probably not as straightforward.
-                            try:
-                                closest_to_src, _ = d_src.pop(0)
-                                closest_to_dst, _ = d_dst.pop(0) # TODO: question: what if the same node is closest to both src and dst. might need some sort of a check
-                                self._swap([closest_to_src, self.name, closest_to_dst]) # param is a path since i made it for slmpg first. so need to pass a path like this
-                            except IndexError:
-                                break # we get there when are no more pairs to be made
+                        # local strategy part:
+                        if len(linked_n_nodes) <= 1: # if you dont have at least 2 linked neighbours then you cant swap.
+                            pass # nothing can be done
+                        else:
+                            # find the pair of best 2 neighbours (closest to src and dst). and swap them. move on to next 2 and so on. stop if <= 1 neighbours left
+                            while True: # TODO: if you have multiple links with the same neighbour then this is probably not as straightforward.
+                                try:
+                                    closest_to_src, d0_src = d_src[0]
+                                    closest_to_dst, d0_dst = d_dst[0]
 
-                
-                temp = 0
+                                    if closest_to_src == closest_to_dst: # then look at next best d_src and d_dst such that the chosen 2 nodes' sum of d_src and d_dst is minimum among the possibilities
+                                        _, d1_src = d_src[1]
+                                        _, d1_dst = d_dst[1]
+                                        # closest_to_dst, _ = d_dst.pop(1)
+                                        if (d0_src + d1_dst) < (d0_dst + d1_src):
+                                            chosen_src_side_idx = 0
+                                            chosen_dst_side_idx = 1
+                                        else:
+                                            chosen_src_side_idx = 1
+                                            chosen_dst_side_idx = 0
+                                    else:
+                                        chosen_src_side_idx = 0
+                                        chosen_dst_side_idx = 0
+
+                                    # pop from the lists the nodes that are selected
+                                    closest_to_src, _ = d_src.pop(chosen_src_side_idx)
+                                    closest_to_dst, _ = d_dst.pop(chosen_dst_side_idx)
+
+                                    # remove from the other list too
+                                    d_src = [x for x in d_src if x[0] != closest_to_dst]
+                                    d_dst = [x for x in d_dst if x[0] != closest_to_src]
+                                    
+                                    print(f" sim_time = {ns.sim_time():.1f}: {self.name} is swapping for [{closest_to_src}, {self.name}, {closest_to_dst}]")
+                                    serving_pair = (src, dst)
+                                    path = [closest_to_src, self.name, closest_to_dst]
+                                    self._swap(serving_pair, path)
+                                except IndexError:
+                                    break # we get there when are no more pairs to be made
+
             elif globals.args.alg is globals.ALGS.QPASS:
                 pass
             elif globals.args.alg is globals.ALGS.QCAST:
@@ -592,29 +578,46 @@ class NodeEntity(pydynaa.Entity):
         m0, m1 = msg_packet[KEYS.CORRECTIONS]
         data_qubit_state = msg_packet[KEYS.DATA_QUBIT_STATE]
         sender_name = msg_packet[KEYS.SRC]
+        serving_pair = msg_packet[KEYS.SERVING_PAIR]
+        src_name, dst_name = serving_pair
 
-    
+        if self.name == dst_name: # case when this is dest node
+            if self.name != path[-1]:
+                path.append(self.name)
+            self.e2e_paths_sofar.append(path) # not used. remove TODO
+            temp =1
+
         if data_qubit_state is None: # regular case
-            evtype = self.corrections_received_evtype
-            entity = self
-            params = (sender_name, m0, m1)
-            
-            if globals.args.alg is globals.ALGS.SLMPL: # TODO: its getting messy to have separate cases for diff algs. find common stuff and make as general functions as possible
-                # in slmpg the node is already waiting for the following event. but in slmpl its not set up to wait. so just add code for that here.
-                is_dest = False # in case node is the destination, _apply_corrections will schedule an event e2e_ready_evtype so that source sends the qubit
-                params = [is_dest, path]
-                self._set_event_handler_params(evtype, entity, params)
-                self._wait_once(
-                        event_type = evtype,
-                        entity = entity,
-                        handler = pydynaa.EventHandler(self._apply_corrections),
-                    )
+            if self._apply_corrections_and_swap_next(serving_pair, path, sender_name, m0, m1):
+                return
+            else:
+                # if above function returns false then that means corrections couldnt be applied as the epr pair has already been swapped. so forward the message packet to the node that now holds this epr pair
+                next_node_name = None
+                for swapped_pair in self.swapped_nodes:
+                    if swapped_pair[0] == sender_name:
+                        next_node_name = swapped_pair[1]
+                        break
+                    if swapped_pair[1] == sender_name:
+                        next_node_name = swapped_pair[0]
+                        break
                 
-            self._set_event_handler_params(evtype, entity, params)
-            self._schedule_now(evtype)
+                if self.name != path[-1]:
+                    path.append(self.name)
+                self.send_message(
+                    next_node_name, 
+                    message=self._gen_message_packet(
+                            msg_type=globals.MSG_TYPE.corrections,
+                            src_name=self.name,
+                            dst_name=next_node_name,
+                            path=path,
+                            serving_pair=serving_pair,
+                            corrections=(m0, m1),
+                            corrections_via=msg_packet[KEYS.CORRECTIONS_VIA].append(self.name)
+                            ),
+                    )
         else:
             # case when received corrections of the data qubit/teleported qubit
-            self._receive_teleported_qubit(m0, m1, data_qubit_state, path)
+            self._receive_teleported_qubit(m0, m1, data_qubit_state, path, serving_pair)
 
     def _get_ebit_shared_with(self, node_name):
         # returns the ebit and also returns the ebit's index in main qmem or conn mem. also returns whether this self.node's ebit is used or not
@@ -661,7 +664,7 @@ class NodeEntity(pydynaa.Entity):
         
         return pathwise_roles
 
-    def _swap(self, path):
+    def _swap(self, serving, path):
         prev_node_name = path[path.index(self.name) - 1]
         next_node_name = path[path.index(self.name) + 1]
         src_side_ebit, _, _ = self._get_ebit_shared_with(prev_node_name)
@@ -674,20 +677,24 @@ class NodeEntity(pydynaa.Entity):
                     src_name=self.name,
                     dst_name=next_node_name,
                     path=path,
+                    serving_pair=serving,
                     corrections=(m0, m1)
                     ),
-            )
+            ) # the node receiving this message will run self._store_corrections()
+        self.swapped_nodes.append((prev_node_name, next_node_name))
     
     def _get_data_qubit_state(self, src_name, dst_name):
         for s, d, state in self.sd_pairs:
             if s == src_name and d == dst_name:
                 return state
         return None
-
-    def _teleport_qubit(self, ev):
-        params = self._get_event_handler_params(ev.type, ev.source)
-        path = params[0]
-        dst_name = path[-1]
+    
+    def _teleport_qubit(self, serving_pair, path):
+        src_name, dst_name = serving_pair
+        if src_name != self.name:
+            # if i am not the source then dont do anything
+            return
+        
         data_qubit_state = self._get_data_qubit_state(self.name, dst_name)
         data_qubit = quantum.generate_data_qubit(data_qubit_state)
         e2e_ebit, _, _ = self._get_ebit_shared_with(path[1])
@@ -701,15 +708,19 @@ class NodeEntity(pydynaa.Entity):
                     corrections=(m0, m1),
                     data_qubit_state=data_qubit_state,
                     path=path,
+                    serving_pair=serving_pair
                     ),
             send_directly=False, # src and dest may or may not be neighbours. so letting the send_message figure out the next hop itself
             )
-
-    def _apply_corrections(self, ev):
-        params = self._get_event_handler_params(ev.type, ev.source)
-        is_dest, path = params[0]
-        sender_name, m0, m1 = params[1]
+    
+    def _apply_corrections_and_swap_next(self, serving_pair, path, sender_name, m0, m1):
+        src_name, dst_name = serving_pair
+        is_dest = True if self.name == dst_name else False
         ebit, index, using_mine = self._get_ebit_shared_with(sender_name)
+        if ebit is None:
+            # this can happen in SLMP local if this swap has already been done
+            # upon return, the node will forward corrections to the node that now share the epr pair with the sender
+            return False
         teleported_qubit, _ = quantum.apply_corrections(ebit, (m0, m1))
         
         # put the teleported qubit back into memory:
@@ -721,16 +732,20 @@ class NodeEntity(pydynaa.Entity):
         qmem.put(teleported_qubit, positions=index)
 
         if not is_dest:
-            self._swap(path)
             print(f" sim_time = {ns.sim_time():.1f}: {self.name}: swapped ebit after receiving corrections from {sender_name}")
+            if globals.args.alg is globals.ALGS.SLMPG:
+                self._swap(serving_pair, path)
 
         if is_dest: # destination node has the extra step to let source node know that they share an e2e ebit. so schedule a e2e_ready_evtype event
-            self._schedule_now(NodeEntity.e2e_ready_evtype)
+            if path[0] == src_name and path[-1] == dst_name: # send e2e ready message if e2e path ready (useful check for slmpl)
+                self._send_e2e_ready_message(serving_pair, path)
 
-    def _receive_teleported_qubit(self, m0, m1, data_qubit_state, path):
+        return True
+
+    def _receive_teleported_qubit(self, m0, m1, data_qubit_state, path, serving_pair):
         e2e_ebit, _, _ = self._get_ebit_shared_with(path[-2])
         teleported_qubit, fidelity = quantum.apply_corrections(e2e_ebit, (m0, m1), original_state=data_qubit_state)
-        print(f" sim_time = {ns.sim_time():.1f}: {self.name}: received the data qubit with fidelity {fidelity:.3f}")
+        print(f" sim_time = {ns.sim_time():.1f}: {self.name}: received the data qubit with fidelity {fidelity:.3f} over path {path}")
 
     def _gen_links_graph(self, og_graph, link_states: list):
         # generates an nx graph comprising of successful links (edges over which epr pairs have been shared successfully)
@@ -822,6 +837,21 @@ class NodeEntity(pydynaa.Entity):
             return delta_x(node1, node2) + delta_y(node1, node2)
         if method == "shortest_path_length": # not in the paper. just adding it because why not
             return nx.shortest_path_length(self.network.nx_graph, source=node1, target=node2)
+
+    def _send_e2e_ready_message(self, serving_pair, path):
+        # this is sent to whoever is at the start of the path. this lets that node know that it shares an e2e ebit with dst. if that node is src, it will teleport the data qubit. otherwise do nothing.
+        send_to = path[0]
+        self.send_message(
+            send_to, 
+            message=self._gen_message_packet(
+                    msg_type=globals.MSG_TYPE.e2e_ready,
+                    src_name=self.name,
+                    dst_name=send_to,
+                    path=path,
+                    serving_pair=serving_pair,
+                    ),
+            send_directly=False
+            ) # the node receiving this message will run self._teleport_qubit()
 
 class NIS(pydynaa.Entity): # The Network Information Server
     new_ts_evtype = pydynaa.EventType("NEW_TIMESLOT", "A new timeslot has begun.")

@@ -4,8 +4,8 @@ This file contains the functions to import certain network topologies from saved
 import globals
 import networkx as nx
 # TODO: (line 12 fn) make a fn that joins same edges as increased width
-# data_directory_path = './networks-data'
-data_directory_path = './qpass-qcast/networks-data'
+data_directory_path = './networks-data'
+# data_directory_path = './qpass-qcast/networks-data'
 default_length = globals.args.length
 default_width = globals.args.width
 

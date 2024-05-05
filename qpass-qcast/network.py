@@ -123,6 +123,8 @@ class Network(ns_Network):
             u.add_subcomponent(QuantumMemory(qmem_name, num_positions=1))
             v.add_subcomponent(QuantumMemory(qmem_name, num_positions=1))
             
+            # q_channel_model = self._gen_q_channel_model()
+
             if globals.args.error_model == 'none':
                 q_channel_model = None # options include delay_model (class DelayModel), quantum_noise_model, quantum_loss_model (class for the latter 2 is QuantumErrorModel).  quantum_loss_model has a model to use probability to lose qubit
             elif globals.args.error_model == 'dephase':
@@ -189,20 +191,23 @@ class Network(ns_Network):
             header['dst'] = m.meta['header'][1]
             header['channel_num'] = m.meta['header'][2]
             network = super()
+            this_node_name = header['dst']
             KEYS = globals.MSG_KEYS
-            MSG_TYPE = globals.MSG_TYPE
-            if msg_packet[KEYS.TYPE] is MSG_TYPE.ebit_sent:
-                this_entity: NodeEntity = network.get_node(msg_packet[KEYS.DST]).entity
-                this_entity._rcv_ebit(msg_packet[KEYS.SRC], msg_packet[KEYS.CONN_NUM])
-            elif msg_packet[KEYS.TYPE] is MSG_TYPE.ebit_received:
-                this_entity: NodeEntity = network.get_node(msg_packet[KEYS.DST]).entity
-                this_entity.add_to_link_state(ebit_from=msg_packet[KEYS.DST], ebit_to=msg_packet[KEYS.SRC], on_channel_num=msg_packet[KEYS.CONN_NUM], received_successfully=msg_packet[KEYS.EBIT_RECV_SUCCESS])
-            elif msg_packet[KEYS.TYPE] is MSG_TYPE.link_state:
-                this_entity: NodeEntity = network.get_node(header['dst']).entity
-                this_entity.process_link_state_packet(header['src'], msg_packet)
-            elif msg_packet[KEYS.TYPE] is MSG_TYPE.corrections:
-                this_entity: NodeEntity = network.get_node(msg_packet[KEYS.DST]).entity
-                this_entity._store_corrections(msg_packet)
+            this_entity: NodeEntity = network.get_node(this_node_name).entity
+            if msg_packet[KEYS.DST] == this_node_name: # if the message packet is meant for me, process
+                MSG_TYPE = globals.MSG_TYPE
+                if msg_packet[KEYS.TYPE] is MSG_TYPE.ebit_sent:
+                    this_entity._rcv_ebit(msg_packet[KEYS.SRC], msg_packet[KEYS.CONN_NUM])
+                elif msg_packet[KEYS.TYPE] is MSG_TYPE.ebit_received:
+                    this_entity.add_to_link_state(ebit_from=msg_packet[KEYS.DST], ebit_to=msg_packet[KEYS.SRC], on_channel_num=msg_packet[KEYS.CONN_NUM], received_successfully=msg_packet[KEYS.EBIT_RECV_SUCCESS])
+                elif msg_packet[KEYS.TYPE] is MSG_TYPE.link_state:
+                    this_entity.process_link_state_packet(header['src'], msg_packet)
+                elif msg_packet[KEYS.TYPE] is MSG_TYPE.corrections:
+                    this_entity._store_corrections(msg_packet)
+                elif msg_packet[KEYS.TYPE] is MSG_TYPE.e2e_ready:
+                    this_entity._teleport_qubit(msg_packet[KEYS.SERVING_PAIR], msg_packet[KEYS.PATH])
+            else: # if message not meant for you. send to next neighbour onward to the destination
+                this_entity.send_message(msg_packet[KEYS.DST], msg_packet, send_directly=False)
 
     def _qubit_recv_handler(self, q):
         # print(f'rcv qbit:{q}')
@@ -217,3 +222,29 @@ class Network(ns_Network):
         this_node = network.get_node(header['dst'])
         this_conn_qmem = this_node.subcomponents[qmem_label]
         this_conn_qmem.put(qubit)
+    
+    # def _gen_q_channel_model(self):
+    #     q_channel_model = {}
+
+    #     MODEL_TYPES = globals.QCHANNEL_MODEL_TYPES
+    #     LOSS_MODELS = globals.QCHANNEL_LOSS_MODEL
+    #     NOISE_MODELS = globals.QCHANNEL_NOISE_MODEL
+
+
+
+    #     if globals.args.error_model == NOISE_MODELS.none:
+    #         q_channel_model = None # options include delay_model (class DelayModel), quantum_noise_model, quantum_loss_model (class for the latter 2 is QuantumErrorModel).  quantum_loss_model has a model to use probability to lose qubit
+    #     elif globals.args.error_model == NOISE_MODELS.dephase:
+    #         # rate = 0.25
+    #         rate = globals.args.error_param
+    #         # is_time_independent = True
+    #         is_time_independent = True if globals.args.error_time_independent == 'yes' else False
+    #         q_channel_model = {"quantum_noise_model": ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=rate, time_independent=is_time_independent)}
+    #     elif globals.args.error_model == NOISE_MODELS.depolar:
+    #         # rate = 0.9
+    #         rate = globals.args.error_param
+    #         # is_time_independent = True
+    #         is_time_independent = True if globals.args.error_time_independent == 'yes' else False
+    #         q_channel_model = {"quantum_noise_model": ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=rate, time_independent=is_time_independent)}
+
+    #     return q_channel_model

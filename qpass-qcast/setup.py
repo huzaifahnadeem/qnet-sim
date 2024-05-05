@@ -1,12 +1,15 @@
 import argparse
 import netsquid as ns
 import random 
+import numpy
 import globals
 
 def apply_args() -> None:
     # seed:
     ns.set_random_state(seed=globals.args.seed)
     random.seed(globals.args.seed)
+    ns.util.simtools.set_random_state(globals.args.seed)
+    numpy.random.seed(globals.args.seed) # used internally by networkx (maybe netsquid too but not sure)
 
 def get_args() -> None:
     parser = argparse.ArgumentParser(description="Quantum Entanglement Routing Algorithms Implementation with Netsquid.")
@@ -15,6 +18,8 @@ def get_args() -> None:
 
     parser.add_argument('--seed', required=False, default=config.seed, type=int, help=f'The integer to use as the seed value for the netsquid and random libraries. Default set to {config.seed}.c')
     parser.add_argument('--network', required=False, default=config.network_toplogy, choices=[nt.name.lower() for nt in globals.NET_TOPOLOGY], help=f'The network topology to use. Default set to {config.network_toplogy}.')
+    # parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
+    
     parser.add_argument('--alg', required=False, default=config.algorithm, choices=[a.value for a in globals.ALGS], help=f'Choice between SLMPg, SLMPl, QPASS, and QCAST. Default set to {config.algorithm}.')
     parser.add_argument('--num_ts', required=False, default=config.num_ts, type=int, help=f'The total number of timeslots to run for. Default set to {config.num_ts}')
     parser.add_argument('--yen_n', required=False, default=config.yen_n, type=int, help=f'The starting number of offline paths to compute with yen\'s algorithm. Default set to {config.yen_n}.')

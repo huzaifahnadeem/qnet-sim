@@ -2,7 +2,7 @@
 from _enums import *
 
 class Defaults: # The default values to use as arguments
-    seed = 1 # seed for both ns and random
+    seed = 1 # same seed is used wherever there is a possibility to use a seed
     network_toplogy = NET_TOPOLOGY.SLMP_GRID_4x4
     algorithm = ALGS.SLMPG
     num_ts = 1
@@ -18,10 +18,12 @@ class Defaults: # The default values to use as arguments
     length = 1 # kilometers      # for any edge that does not have its length specified
     width = 1                    # for any edge that does not have its width specified
 
-    error_model = 'dephase'
+    # error_model = 'dephase'
     error_param = 0.25
     error_time_independent = 'yes'
 
-    error_model = 'depolar'
-    error_param = 0.9
-    error_time_independent = 'yes'
+    # error_model = 'depolar'
+    # error_param = 0.9
+    # error_time_independent = 'yes'
+
+    error_model = 'none'
