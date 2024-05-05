@@ -775,6 +775,8 @@ class NodeEntity(pydynaa.Entity):
                     G.remove_edges_from(edges_of_path(p))
                 except nx.NetworkXNoPath: # all paths found
                     break
+                except nx.NodeNotFound: # if src/dst is not able to make link to any node
+                    break
         return paths
 
     def _set_event_handler_params(self, ev_type, ev_src, params):

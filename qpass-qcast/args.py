@@ -37,7 +37,7 @@ def get_args():
     parser.add_argument('--cc_delay_fixed', required=False, default=config.cc_delay_fixed, type=float, help=f'The fixed delay in micro seconds to use with channels. Only used with --cc_delay_model=fixed')
     parser.add_argument('--cc_delay_mean', required=False, default=config.cc_delay_mean, type=float, help=f'The mean delay in micro seconds to use with channels. Only used with --cc_delay_model=gaussian')
     parser.add_argument('--cc_delay_std', required=False, default=config.cc_delay_std, type=float, help=f'The standard deviation for delay in micro seconds to use with channels. Only used with --cc_delay_model=gaussian')
-    # TODO: arg for q probability.
+    parser.add_argument('--prob_swap_loss', required=False, default=config.prob_swap_loss, type=float, help=f'The probability that a pair of qubits would be lost when a swap operation is performed. Its the \'q\' parameter.')
     
     globals.args = parser.parse_args()
 

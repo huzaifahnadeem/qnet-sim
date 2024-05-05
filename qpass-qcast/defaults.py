@@ -20,17 +20,17 @@ class Defaults: # The default values to use as arguments
     length = 1 # kilometers      # for any edge that does not have its length specified
     width = 1                    # for any edge that does not have its width specified
 
-    noise_model = QCHANNEL_NOISE_MODEL.none
+    noise_model = QCHANNEL_NOISE_MODEL.dephase
     noise_param = 0.25
     # noise_param = 0.9
     noise_time_independent = True
 
-    loss_model = QCHANNEL_LOSS_MODEL.none
+    loss_model = QCHANNEL_LOSS_MODEL.fibre
     p_loss_init = 0
     p_loss_length = 0
 
     # delay model params for quantum channels
-    qc_delay_model = CHANNEL_DELAY_MODEL.none
+    qc_delay_model = CHANNEL_DELAY_MODEL.fibre # TODO: currently some is some bug due to how if it takes too long for the qubit to reach then a node assumes it didnt get it and 
     qc_delay_fixed = 0 # only used for fixed delay model
     qc_delay_mean = 0 # only used for gaussian delay model
     qc_delay_std = 0 # only used for gaussian delay model
@@ -40,3 +40,5 @@ class Defaults: # The default values to use as arguments
     cc_delay_fixed = 1 # only used for fixed delay model
     cc_delay_mean = 0 # only used for gaussian delay model
     cc_delay_std = 0 # only used for gaussian delay model
+
+    prob_swap_loss = 0 # the 'q' param
