@@ -7,7 +7,7 @@ class Defaults: # The default values to use as arguments
     seed = 1 # same seed is used wherever there is a possibility to use a seed
     network_toplogy = NET_TOPOLOGY.SLMP_GRID_4x4
     algorithm = ALGS.SLMPG
-    num_ts = 1
+    num_ts = 5
     yen_n = 25 # the paper has this fixed as 25
     # yen_metric = YEN_METRICS.CR # CR performs slightly better than the others in the paper so sticking with this one
     yen_metric = YEN_METRICS.SUMDIST # for now. probably should use CR since that is the one paper chooses to go with.
@@ -15,8 +15,8 @@ class Defaults: # The default values to use as arguments
     max_sd_pairs_per_ts = 4
     min_sd_pairs_per_ts = 4
     single_entanglement_flow_mode = True
-    src_set = ['n10']
-    dst_set = ['n3']
+    src_set = [] # empty list => all nodes
+    dst_set = [] # empty list => all nodes
     p2_nc = 1
     two_sided_epr = True
     link_establish_timeout = 10 # arbitrary for now

@@ -904,9 +904,10 @@ class NIS(pydynaa.Entity): # The Network Information Server
         for _ in range(num_of_ts):
             if globals.args.single_entanglement_flow_mode:
                 if globals.args.src_set == []:
-                    src_set = node_names
+                    src_set = [random.choice(node_names)]
                 if globals.args.dst_set == []:
-                    dst_set = node_names
+                    dst_set = [random.choice(list(set(node_names) - set(src_set)))]
+
                 if (globals.args.src_set != []) and (globals.args.dst_set != []):
                     while True:
                         i = (i+1) % len(globals.args.src_set)
