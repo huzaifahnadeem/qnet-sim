@@ -19,6 +19,7 @@ starting_states = {
     }
 
 data_qubit_states = [] # this keeps actual states in. nodes only have an index for this.
+sd_pair_states = {}
 
 def prepare_corrections(qubit_to_teleport, entangled_qubit):
         ns.qubits.operate([qubit_to_teleport, entangled_qubit], ns.CNOT)
@@ -45,7 +46,7 @@ def apply_corrections(ebit, corrections, original_state_idx=None):
     
     # if original state provided then also returns the fidelity of it. Otherwise fidelity is just None
     if original_state_idx is not None:
-        original_qubit = generate_data_qubit(original_state_idx)
+        original_qubit = _generate_data_qubit(original_state_idx)
         original_state = original_qubit.qstate.qrepr
         fidelity = ns.qubits.fidelity(ebit, original_state, squared=True)
     else:
@@ -53,7 +54,7 @@ def apply_corrections(ebit, corrections, original_state_idx=None):
     
     return ebit, fidelity # ebit has the teleported qubit's state now
 
-def generate_data_qubit(state_idx):
+def _generate_data_qubit(state_idx):
     start_state, operator = data_qubit_states[state_idx]
     data_qubit,  = ns.qubits.create_qubits(1, no_state=True)
     ns.qubits.assign_qstate([data_qubit], starting_states[start_state]) # assign starting state
@@ -61,14 +62,26 @@ def generate_data_qubit(state_idx):
     
     return data_qubit
 
-def gen_random_state():
-    angle_factor = random.uniform(0.0, 2.0) # this will be multiplied by pi
-    rot_axis = random.choice([(1, 0, 0), (0, 1, 0), (0, 0, 1)]) # Unit vector representing x, y, and z axes, respectively.
+def _gen_random_state():
+    angle = pi * random.uniform(0.0, 2.0)
+    rot_axis = random.choice([(1, 0, 0), (0, 1, 0), (0, 0, 1)]) # unit vectors representing x, y, and z axes, respectively.
     do_complex_conj = random.choice([True, False])
     
     start_state = random.choice(list(starting_states.keys()))
-    operator = ns.qubits.operators.create_rotation_op(angle=angle_factor*pi, rotation_axis=rot_axis, conjugate=do_complex_conj)
+    operator = ns.qubits.operators.create_rotation_op(angle=angle, rotation_axis=rot_axis, conjugate=do_complex_conj)
     
     next_idx = len(data_qubit_states)
     data_qubit_states.append((start_state, operator)) # saving the starting state and the operator. When generate_data_qubit() is called, it will generate a qubit and assign it this state and then apply the operator.
     return next_idx
+
+def new_sd_pair(sd_pair):
+    global sd_pair_states
+    state_idx = _gen_random_state()
+    sd_pair_states.setdefault(sd_pair, []).append(state_idx)
+
+def get_data_qubit_for(sd_pair):
+    global sd_pair_states
+    state_idx = sd_pair_states[sd_pair].pop(0)
+    qubit = _generate_data_qubit(state_idx)
+    
+    return qubit, state_idx

@@ -12,6 +12,7 @@ import copy
 # from functools import reduce
 import quantum
 from math import sqrt
+import utils
 
 # TODO: make new files for each alg and put functions specific to them there to make things neater. Probably a good idea to use protocol class too while we are at it
 
@@ -464,13 +465,11 @@ class NodeEntity(pydynaa.Entity):
         def start_p4(_):
             nonlocal self
             print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p4 start.")
-            # print(self.link_state)
-            # print(self.neighbours_link_state)
             if globals.args.alg is globals.ALGS.SLMPG:
                 links_graph = self._gen_links_graph(self.network.nx_graph, self.neighbours_link_state)
-                sd_pairs = [(pair[0], pair[1]) for pair in self.sd_pairs] # self.sd_pairs is a list of (s, d, state)
+                sd_pairs = self.sd_pairs
                 print(f"sd pairs: {sd_pairs}")
-                paths = self._slmpg_path_finder(links_graph, sd_pairs)
+                paths = utils.slmpg_path_finder(links_graph, sd_pairs)
                 
                 # for testing:
                 # paths = [['n10', 'n6', 'n2', 'n3'], ['n10', 'n11', 'n7', 'n3'], ['n10', 'n9', 'n5', 'n6', 'n7', 'n8', 'n4', 'n3']] # getting diff orders so fixed for now
@@ -496,7 +495,7 @@ class NodeEntity(pydynaa.Entity):
                         pass
 
             elif globals.args.alg is globals.ALGS.SLMPL:
-                sd_pairs = [(pair[0], pair[1]) for pair in self.sd_pairs] # self.sd_pairs is a list of (s, d, state)
+                sd_pairs = self.sd_pairs
                 print(f"sd pairs: {sd_pairs}")
 
                 for pair_num in range((len(sd_pairs))):
@@ -689,20 +688,13 @@ class NodeEntity(pydynaa.Entity):
             ) # the node receiving this message will run self._store_corrections()
         self.swapped_nodes.append((prev_node_name, next_node_name))
     
-    def _get_data_qubit_state(self, src_name, dst_name):
-        for s, d, state in self.sd_pairs:
-            if s == src_name and d == dst_name:
-                return state
-        return None
-    
     def _teleport_qubit(self, serving_pair, path):
         src_name, dst_name = serving_pair
         if src_name != self.name:
             # if i am not the source then dont do anything
             return
         
-        data_qubit_state_idx = self._get_data_qubit_state(self.name, dst_name)
-        data_qubit = quantum.generate_data_qubit(data_qubit_state_idx)
+        data_qubit, ref_idx = quantum.get_data_qubit_for((src_name, dst_name))
         e2e_ebit, _, _ = self._get_ebit_shared_with(path[1])
         m0, m1 = quantum.prepare_corrections(data_qubit, e2e_ebit)
         self.send_message(
@@ -712,7 +704,7 @@ class NodeEntity(pydynaa.Entity):
                     src_name=self.name,
                     dst_name=dst_name,
                     corrections=(m0, m1),
-                    data_qubit_state=data_qubit_state_idx,
+                    data_qubit_state=ref_idx,
                     path=path,
                     serving_pair=serving_pair
                     ),
@@ -761,37 +753,6 @@ class NodeEntity(pydynaa.Entity):
             for e in edges_list:
                 links_graph.add_edge(e[0], e[1], channel_num=e[2], length=og_graph[e[0]][e[1]]['length'])
         return links_graph
-
-    def _slmpg_path_finder(self, links_graph, sd_pairs): # TODO: i think this is quite inefficient.
-        # TODO: multi flow stuff
-        G = copy.deepcopy(links_graph)
-        paths = []
-
-        def edges_of_path(p):
-            edge_path = []
-            for i in range(1, len(p)):
-                edge_path.append((p[i-1], p[i]))
-            return edge_path
-        
-        for s, d in sd_pairs:
-            while True:
-                try:
-                    p = nx.shortest_path(G, source=s, target=d, weight='length')
-                    paths.append(list(p))
-                    G.remove_edges_from(edges_of_path(p))
-                except nx.NetworkXNoPath: # all paths found
-                    break
-                except nx.NodeNotFound: # if src/dst is not able to make link to any node
-                    break
-        # the following sorting is important to make the list of paths consistent (deterministic list of paths) across nodes. If we dont do this then if there is more than 1 shortest path, the specific order of the shortest paths is not deterministic based on how networkx's shortest_path function works. so need to sort them deterministically.
-        path_w_weights = []
-        random.shuffle(paths) # if we dont do this then the consistency problem remains since during sorting one shortest path might be before/after the other and sorting might not switch the places
-        G = copy.deepcopy(links_graph)
-        for p in paths:
-            weight = nx.path_weight(G, path=p, weight='length')
-            path_w_weights.append((p, weight))
-        path_w_weights.sort(key=lambda tup: tup[1]) # sorts in place
-        return [tup[0] for tup in path_w_weights]
 
     def _set_event_handler_params(self, ev_type, ev_src, params):
         entity = ev_src
@@ -926,8 +887,9 @@ class NIS(pydynaa.Entity): # The Network Information Server
                 while True:
                     d = random.choice(node_names)
                     if s != d:
-                        state = quantum.gen_random_state() # returns an index of the state. quantum file will keep track of the actual state in random_states list.
-                        this_ts_sds.append((s, d, state))
+                        sd_pair = (s, d)
+                        quantum.new_sd_pair(sd_pair) # returns an index of the state. quantum file will keep track of the actual state in random_states list.
+                        this_ts_sds.append(sd_pair)
                         break
 
             tm.append(this_ts_sds)
@@ -940,6 +902,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
     def _new_ts(self, _):
         self.curr_ts += 1
         self.curr_sd_pairs = self._this_ts_sd_pairs()
+        utils._slmpg_paths_found_already = {}
         
         if globals.args.alg is globals.ALGS.QPASS:
             self._run_qpass_p2_alg()
