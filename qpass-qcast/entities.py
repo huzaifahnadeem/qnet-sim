@@ -695,6 +695,11 @@ class NodeEntity(pydynaa.Entity):
             return
         
         data_qubit, ref_idx = quantum.get_data_qubit_for((src_name, dst_name))
+
+        if data_qubit is None and ref_idx is None: # this can happen with slmpl since you are trying to find as many paths as possible.
+            # then you have the e2e path ready but no qubit to send
+            return
+
         e2e_ebit, _, _ = self._get_ebit_shared_with(path[1])
         m0, m1 = quantum.prepare_corrections(data_qubit, e2e_ebit)
         self.send_message(

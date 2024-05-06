@@ -81,7 +81,11 @@ def new_sd_pair(sd_pair):
 
 def get_data_qubit_for(sd_pair):
     global sd_pair_states
-    state_idx = sd_pair_states[sd_pair].pop(0)
-    qubit = _generate_data_qubit(state_idx)
+    try:
+        state_idx = sd_pair_states[sd_pair].pop(0)
+        qubit = _generate_data_qubit(state_idx)
+    except IndexError:
+        # this will happen if attempting to teleport another qubit but you dont have any further demand for this src-pair
+        return None, None
     
     return qubit, state_idx

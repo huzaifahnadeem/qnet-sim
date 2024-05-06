@@ -20,7 +20,7 @@ class Defaults: # The default values to use as arguments
     length = 1 # kilometers      # for any edge that does not have its length specified
     width = 1                    # for any edge that does not have its width specified
 
-    noise_model = QCHANNEL_NOISE_MODEL.depolar
+    noise_model = QCHANNEL_NOISE_MODEL.none
     noise_param = 0.6
     noise_time_independent = True
 
