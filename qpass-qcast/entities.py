@@ -670,6 +670,12 @@ class NodeEntity(pydynaa.Entity):
         next_node_name = path[path.index(self.name) + 1]
         src_side_ebit, _, _ = self._get_ebit_shared_with(prev_node_name)
         dst_side_ebit, _, _ = self._get_ebit_shared_with(next_node_name)
+        
+        if src_side_ebit is None:
+            return
+        if dst_side_ebit is None:
+            return
+        
         m0, m1 = quantum.prepare_corrections(src_side_ebit, dst_side_ebit)
         
         if not self._swap_successful(): # q parameter
