@@ -881,16 +881,44 @@ class NIS(pydynaa.Entity): # The Network Information Server
         num_of_ts = globals.args.num_ts
         max_num_sds = globals.args.max_sd
         min_num_sds = globals.args.min_sd
+        
+        if not globals.args.single_entanglement_flow_mode:
+            if globals.args.src_set == []:
+                src_set = node_names
+            else:
+                src_set = globals.args.src_set
+            if globals.args.dst_set == []:
+                dst_set = node_names
+            else:
+                dst_set = globals.args.dst_set
 
         tm = []
+        i = -1
+        j = -1
         for _ in range(num_of_ts):
+            if globals.args.single_entanglement_flow_mode:
+                if globals.args.src_set == []:
+                    src_set = node_names
+                if globals.args.dst_set == []:
+                    dst_set = node_names
+                if (globals.args.src_set != []) and (globals.args.dst_set != []):
+                    while True:
+                        i = (i+1) % len(globals.args.src_set)
+                        j = (j+1) % len(globals.args.dst_set)
+                        src_set = [globals.args.src_set[i]]
+                        dst_set = [globals.args.dst_set[j]]
+                        if src_set != dst_set:
+                            break
+                        else:
+                            i -= 1
+
             this_ts_sds = []
             num_sds = random.randint(min_num_sds, max_num_sds)
             
-            sources = random.choices(node_names, k = num_sds)
+            sources = random.choices(src_set, k = num_sds)
             for s in sources:
                 while True:
-                    d = random.choice(node_names)
+                    d = random.choice(dst_set)
                     if s != d:
                         sd_pair = (s, d)
                         quantum.new_sd_pair(sd_pair) # returns an index of the state. quantum file will keep track of the actual state in random_states list.

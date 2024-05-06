@@ -12,8 +12,11 @@ class Defaults: # The default values to use as arguments
     # yen_metric = YEN_METRICS.CR # CR performs slightly better than the others in the paper so sticking with this one
     yen_metric = YEN_METRICS.SUMDIST # for now. probably should use CR since that is the one paper chooses to go with.
     p3_hop = 1
-    max_sd_pairs_per_ts = 1
-    min_sd_pairs_per_ts = 1
+    max_sd_pairs_per_ts = 4
+    min_sd_pairs_per_ts = 4
+    single_entanglement_flow_mode = True
+    src_set = ['n10']
+    dst_set = ['n3']
     p2_nc = 1
     two_sided_epr = True
     link_establish_timeout = 10 # arbitrary for now
