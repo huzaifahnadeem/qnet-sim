@@ -1,12 +1,22 @@
 import argparse
 import globals
+import json
+import utils
 
-def get_args():
+def get_args(): # TODO: bug fix: using the --help flag only prints help for --config_file and not others. This is probably because that is added first and then we parse_known_args and then add others.
     parser = argparse.ArgumentParser(description="Quantum Entanglement Routing Algorithms Implementation with Netsquid.")
+    config = globals.Defaults
 
-    config = globals.Defaults # TODO: add option to use a config file (would contain a class with properties exactly like globals.Default class)
+    # check if the following arg was used. If it was, then read this json file and update config object properties using whatever is in the json file. Whatever is not defined is kept from globals.Defaults
+    parser.add_argument('--config_file', required=False, default=None, type=str, help=f'This argument can be used to specify a configuration file (a json file) to be used for any arguments not explicitly passed. If an argument is passed then that value would be used. If not, then if that argument\'s value was specified in the json configuration file, that value would be used. If neither done for an argument, then values from \'./defaults.py\' are used. Usage: --config_file=/path/to/filename.json. Json format: use curly brackets to make a dictionary and add variables as its keys and define the values as values for this key. Check \'./sample_config.json\' for an example.')
+    config_file_check = parser.parse_known_args()
+    if config_file_check[0].config_file is not None:
+        file_name = config_file_check[0].config_file
+        with open(file_name) as conf_file:
+            utils.parse_json_config(config, json.loads(conf_file.read())) # the util function overwrites all the variables in the config object and leaves the rest as they are
 
-    parser.add_argument('--seed', required=False, default=config.seed, type=int, help=f'The integer to use as the seed value for the netsquid and random libraries. Default set to {config.seed}.c')
+    # rest of the arguments.
+    parser.add_argument('--seed', required=False, default=config.seed, type=int, help=f'The integer to use as the seed value for the netsquid and random libraries. Default set to {config.seed}.')
     parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumInParamAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
     parser.add_argument('--alg', required=False, default=config.algorithm, type=globals.ALGS, action=globals.EnumInParamAction, help=f'Choice between SLMPg, SLMPl, QPASS, and QCAST. Default set to {config.algorithm}.')
     parser.add_argument('--num_ts', required=False, default=config.num_ts, type=int, help=f'The total number of timeslots to run for. Default set to {config.num_ts}')

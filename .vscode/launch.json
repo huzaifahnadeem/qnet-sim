@@ -12,7 +12,8 @@
             "program": "${workspaceFolder}/qpass-qcast/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--single_entanglement_flow_mode"]
+            // "args": ["--single_entanglement_flow_mode"]
+            // "args": ["--config_file=${workspaceFolder}/qpass-qcast/sample_config.json"]
         }
     ]
 }

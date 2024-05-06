@@ -61,3 +61,7 @@ def slmpg_path_finder(links_graph, sd_pairs): # TODO: i think this is quite inef
         
         _slmpg_paths_found_already[tuple(sd_pairs)] = paths # cache the result
         return paths
+
+def parse_json_config(config, data):
+    for var in data.keys():
+        setattr(config, var, data[var])
