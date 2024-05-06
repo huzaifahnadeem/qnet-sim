@@ -701,8 +701,8 @@ class NodeEntity(pydynaa.Entity):
             # if i am not the source then dont do anything
             return
         
-        data_qubit_state = self._get_data_qubit_state(self.name, dst_name)
-        data_qubit = quantum.generate_data_qubit(data_qubit_state)
+        data_qubit_state_idx = self._get_data_qubit_state(self.name, dst_name)
+        data_qubit = quantum.generate_data_qubit(data_qubit_state_idx)
         e2e_ebit, _, _ = self._get_ebit_shared_with(path[1])
         m0, m1 = quantum.prepare_corrections(data_qubit, e2e_ebit)
         self.send_message(
@@ -712,7 +712,7 @@ class NodeEntity(pydynaa.Entity):
                     src_name=self.name,
                     dst_name=dst_name,
                     corrections=(m0, m1),
-                    data_qubit_state=data_qubit_state,
+                    data_qubit_state=data_qubit_state_idx,
                     path=path,
                     serving_pair=serving_pair
                     ),
@@ -750,7 +750,7 @@ class NodeEntity(pydynaa.Entity):
 
     def _receive_teleported_qubit(self, m0, m1, data_qubit_state, path, serving_pair):
         e2e_ebit, _, _ = self._get_ebit_shared_with(path[-2])
-        teleported_qubit, fidelity = quantum.apply_corrections(e2e_ebit, (m0, m1), original_state=data_qubit_state)
+        teleported_qubit, fidelity = quantum.apply_corrections(e2e_ebit, (m0, m1), original_state_idx=data_qubit_state)
         print(f" sim_time = {ns.sim_time():.1f}: {self.name}: received the data qubit with fidelity {fidelity:.3f} over path {path}")
 
     def _gen_links_graph(self, og_graph, link_states: list):
@@ -926,7 +926,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
                 while True:
                     d = random.choice(node_names)
                     if s != d:
-                        state = random.choice(list(quantum.data_qubit_states.keys()))
+                        state = quantum.gen_random_state() # returns an index of the state. quantum file will keep track of the actual state in random_states list.
                         this_ts_sds.append((s, d, state))
                         break
 
