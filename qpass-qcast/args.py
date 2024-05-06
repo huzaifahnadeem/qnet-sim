@@ -2,10 +2,18 @@ import argparse
 import globals
 import json
 import utils
+import sys
 
 def get_args(): # TODO: bug fix: using the --help flag only prints help for --config_file and not others. This is probably because that is added first and then we parse_known_args and then add others.
-    parser = argparse.ArgumentParser(description="Quantum Entanglement Routing Algorithms Implementation with Netsquid.")
+    parser = argparse.ArgumentParser(description="Quantum Entanglement Routing Algorithms Implementation with Netsquid.", add_help=False) # reason for implementing help functionality by myself: due to how config file param is set. calling --help only prints its help and not for the others.
     config = globals.Defaults
+    help_case = False
+
+    # check for --help:
+    parser.add_argument('-h', '--help', action='store_true', dest='help', help='show this help message and exit')
+    known_args = parser.parse_known_args()
+    if known_args[0].help:
+        help_case = True
 
     # check if the following arg was used. If it was, then read this json file and update config object properties using whatever is in the json file. Whatever is not defined is kept from globals.Defaults
     parser.add_argument('--config_file', required=False, default=None, type=str, help=f'This argument can be used to specify a configuration file (a json file) to be used for any arguments not explicitly passed. If an argument is passed then that value would be used. If not, then if that argument\'s value was specified in the json configuration file, that value would be used. If neither done for an argument, then values from \'./defaults.py\' are used. Usage: --config_file=/path/to/filename.json. Json format: use curly brackets to make a dictionary and add variables as its keys and define the values as values for this key. Check \'./sample_config.json\' for an example.')
@@ -56,6 +64,10 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--prob_swap_loss', required=False, default=config.prob_swap_loss, type=float, help=f'The probability that a pair of qubits would be lost when a swap operation is performed. Its the \'q\' parameter.') # TODO: couldnt find a way through netsquid. currently going with randomly generating a number and checking against this param when swapping
     
     globals.args = parser.parse_args()
+
+    if help_case:
+        parser.print_help()
+        sys.exit(0)
 
 def args_range_check(): # TODO: https://gist.github.com/dmitriykovalev/2ab1aa33a8099ef2d514925d84aa89e7 provides a better way
     raise_exception = False
