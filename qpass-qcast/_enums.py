@@ -1,6 +1,8 @@
 from enum import Enum
 import argparse
 
+# Note: if an enum is being used as an input param then it has to be declared as a class inheriting Enum class (e.g. see ALGS). Otherwise, either this way (class) or like "SOMETHING = Enum('SOMETHING', ['VAL1', 'VAL2', 'VAL3'])" is fine.
+
 class EnumInParamAction(argparse.Action):
     # from: https://stackoverflow.com/questions/43968006/support-for-enum-arguments-in-argparse
     """
@@ -60,9 +62,28 @@ MSG_TYPE = Enum('MSG_TYPE', ['ebit_sent', 'ebit_received', 'link_state', 'correc
 
 CONN_CHANN_LABELS_FN_PARAM = Enum('CONN_CHANN_LABELS_FN_PARAM', ['CCHANNEL', 'QCHANNEL', 'QCONNECTION', 'CCONNECTION', 'CONN_QMEM'])
 
-QCHANNEL_MODEL_TYPES = Enum('QCHANNEL_MODEL_TYPES', ['delay_model', 'quantum_noise_model', 'quantum_loss_model', 'none']) # netsquid requires these exact strings when setting a model for a channel (except none is my own)
-QCHANNEL_NOISE_MODEL = Enum('QCHANNEL_NOISE_MODEL', ['none', 'dephase', 'depolar']) # models that can be used when 'quantum_noise_model' is selected as model type
-QCHANNEL_LOSS_MODEL = Enum('QCHANNEL_LOSS_MODEL', ['none', 'fibre']) # models that can be used when 'quantum_loss_model' is selected as model type
-CHANNEL_DELAY_MODEL = Enum('CHANNEL_DELAY_MODEL', ['none', 'fibre', 'gaussian', 'fixed']) # Applicable to both quantum and classical channels
+class QCHANNEL_MODEL_TYPES(Enum): # netsquid requires these exact strings when setting a model for a channel (except 'none' is my own)
+    delay_model = 'delay_model'
+    quantum_noise_model = 'quantum_noise_model'
+    quantum_loss_model = 'quantum_loss_model'
+    none = 'none'
 
-QMEM_NOISE_MODEL = Enum('QMEM_NOISE_MODEL', ['none', 'dephase', 'depolar'])
+class QCHANNEL_NOISE_MODEL(Enum): # models that can be used when 'quantum_noise_model' is selected as model type
+    none = 'none'
+    dephase = 'dephase'
+    depolar = 'depolar'
+
+class QCHANNEL_LOSS_MODEL(Enum): # models that can be used when 'quantum_loss_model' is selected as model type
+    none = 'none'
+    fibre = 'fibre'
+
+class CHANNEL_DELAY_MODEL(Enum): # Applicable to both quantum and classical channels
+    none = 'none'
+    fibre = 'fibre'
+    gaussian = 'gaussian'
+    fixed = 'fixed'
+
+class QMEM_NOISE_MODEL(Enum):
+    none = 'none'
+    dephase = 'dephase'
+    depolar = 'depolar'
