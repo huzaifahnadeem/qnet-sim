@@ -9,19 +9,19 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     config = globals.Defaults
     help_case = False
 
-    # # check for --help:
-    # parser.add_argument('-h', '--help', action='store_true', dest='help', help='show this help message and exit')
-    # known_args = parser.parse_known_args()
-    # if known_args[0].help:
-    #     help_case = True
+    # check for --help:
+    parser.add_argument('-h', '--help', action='store_true', dest='help', help='show this help message and exit')
+    known_args = parser.parse_known_args()
+    if known_args[0].help:
+        help_case = True
 
-    # # check if the following arg was used. If it was, then read this json file and update config object properties using whatever is in the json file. Whatever is not defined is kept from globals.Defaults
-    # parser.add_argument('--config_file', required=False, default=None, type=str, help=f'This argument can be used to specify a configuration file (a json file) to be used for any arguments not explicitly passed. If an argument is passed then that value would be used. If not, then if that argument\'s value was specified in the json configuration file, that value would be used. If neither done for an argument, then values from \'./defaults.py\' are used. Usage: --config_file=/path/to/filename.json. Json format: use curly brackets to make a dictionary and add variables as its keys and define the values as values for this key. Check \'./sample_config.json\' for an example.')
-    # config_file_check = parser.parse_known_args()
-    # if config_file_check[0].config_file is not None:
-    #     file_name = config_file_check[0].config_file
-    #     with open(file_name) as conf_file:
-    #         utils.parse_json_config(config, json.loads(conf_file.read())) # the util function overwrites all the variables in the config object and leaves the rest as they are
+    # check if the following arg was used. If it was, then read this json file and update config object properties using whatever is in the json file. Whatever is not defined is kept from globals.Defaults
+    parser.add_argument('--config_file', required=False, default=None, type=str, help=f'This argument can be used to specify a configuration file (a json file) to be used for any arguments not explicitly passed. If an argument is passed then that value would be used. If not, then if that argument\'s value was specified in the json configuration file, that value would be used. If neither done for an argument, then values from \'./defaults.py\' are used. Usage: --config_file=/path/to/filename.json. Json format: use curly brackets to make a dictionary and add variables as its keys and define the values as values for this key. Check \'./sample_config.json\' for an example.')
+    config_file_check = parser.parse_known_args()
+    if config_file_check[0].config_file is not None:
+        file_name = config_file_check[0].config_file
+        with open(file_name) as conf_file:
+            utils.parse_json_config(config, json.loads(conf_file.read())) # the util function overwrites all the variables in the config object and leaves the rest as they are
 
     # rest of the arguments.
     parser.add_argument('--seed', required=False, default=config.seed, type=int, help=f'The integer to use as the seed value for the netsquid and random libraries. Default set to {config.seed}.')
