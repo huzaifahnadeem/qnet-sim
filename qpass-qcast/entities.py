@@ -464,11 +464,11 @@ class NodeEntity(pydynaa.Entity):
         # Place internal link / Internal Phase
         def start_p4(_):
             nonlocal self
-            print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p4 start.")
+            # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p4 start.")
             if globals.args.alg is globals.ALGS.SLMPG:
                 links_graph = self._gen_links_graph(self.network.nx_graph, self.neighbours_link_state)
                 sd_pairs = self.sd_pairs
-                print(f"sd pairs: {sd_pairs}")
+                # print(f"sd pairs: {sd_pairs}")
                 paths = utils.slmpg_path_finder(links_graph, sd_pairs)
                 
                 # for testing:
@@ -496,7 +496,7 @@ class NodeEntity(pydynaa.Entity):
 
             elif globals.args.alg is globals.ALGS.SLMPL:
                 sd_pairs = self.sd_pairs
-                print(f"sd pairs: {sd_pairs}")
+                # print(f"sd pairs: {sd_pairs}")
 
                 for pair_num in range((len(sd_pairs))):
                     src = sd_pairs[pair_num][0]
@@ -941,6 +941,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
 
     def _new_ts(self, _):
         self.curr_ts += 1
+        print(f"time slot {self.curr_ts}")
         self.curr_sd_pairs = self._this_ts_sd_pairs()
         utils._slmpg_paths_found_already = {}
         

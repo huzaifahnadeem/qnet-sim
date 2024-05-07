@@ -46,7 +46,7 @@ class Network(ns_Network):
                 name = node_name,
                 # not using ID. but might be good to have? currently assume unique names so dont need IDs.
                 # ID = int(node_name[1:]), # TODO: this is assuming SLMP_GRID_4x4. make dynamic
-                qmemory = QuantumMemory(name=f"{node_name}-qmem", num_positions=qubit_capacity),
+                qmemory = QuantumMemory(name=f"{node_name}-qmem", num_positions=qubit_capacity, memory_noise_models=self._gen_q_mem_model()),
                 # node_entity = NodeEntity(node_name), # TODO: update?
             )
             this_node.entity = NodeEntity(node_name, this_node)
@@ -123,8 +123,8 @@ class Network(ns_Network):
         for channel_num in range(width):
             q_conn_label = self.gen_label(u_name, v_name, of=label_options.QCONNECTION, num=channel_num)
             qmem_name = self.gen_label(u_name, v_name, of=label_options.CONN_QMEM, num=channel_num)
-            u.add_subcomponent(QuantumMemory(qmem_name, num_positions=1))
-            v.add_subcomponent(QuantumMemory(qmem_name, num_positions=1))
+            u.add_subcomponent(QuantumMemory(qmem_name, num_positions=1, memory_noise_models=self._gen_q_mem_model()))
+            v.add_subcomponent(QuantumMemory(qmem_name, num_positions=1, memory_noise_models=self._gen_q_mem_model()))
             
             q_channel_model = self._gen_q_channel_model()
             
@@ -222,22 +222,22 @@ class Network(ns_Network):
         NOISE_MODELS = globals.QCHANNEL_NOISE_MODEL
         DELAY_MODELS = globals.CHANNEL_DELAY_MODEL
 
-        if (globals.args.noise_model is NOISE_MODELS.none) and (globals.args.loss_model is LOSS_MODELS.none) and (globals.args.qc_delay_model is DELAY_MODELS.none):
+        if (globals.args.qc_noise_model is NOISE_MODELS.none) and (globals.args.qc_loss_model is LOSS_MODELS.none) and (globals.args.qc_delay_model is DELAY_MODELS.none):
             q_channel_model = None
         else:
             # setting the noise model first:
-            if globals.args.noise_model is NOISE_MODELS.none:
+            if globals.args.qc_noise_model is NOISE_MODELS.none:
                 q_channel_model[key_quantum_noise_model] = None
-            elif globals.args.noise_model is NOISE_MODELS.dephase:
-                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=globals.args.noise_param, time_independent=globals.args.noise_time_independent)
-            elif globals.args.noise_model is NOISE_MODELS.depolar:
-                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=globals.args.noise_param, time_independent=globals.args.noise_time_independent)
+            elif globals.args.qc_noise_model is NOISE_MODELS.dephase:
+                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=globals.args.qc_noise_param, time_independent=globals.args.qc_noise_time_independent)
+            elif globals.args.qc_noise_model is NOISE_MODELS.depolar:
+                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=globals.args.qc_noise_param, time_independent=globals.args.qc_noise_time_independent)
             
             # setting the loss model:
-            if globals.args.loss_model is LOSS_MODELS.none:
+            if globals.args.qc_loss_model is LOSS_MODELS.none:
                 q_channel_model[key_quantum_loss_model] = None
-            elif globals.args.loss_model is LOSS_MODELS.fibre:
-                q_channel_model[key_quantum_loss_model] = ns.components.models.qerrormodels.FibreLossModel(p_loss_init=globals.args.p_loss_init, p_loss_length=globals.args.p_loss_length)
+            elif globals.args.qc_loss_model is LOSS_MODELS.fibre:
+                q_channel_model[key_quantum_loss_model] = ns.components.models.qerrormodels.FibreLossModel(p_loss_init=globals.args.qc_p_loss_init, p_loss_length=globals.args.qc_p_loss_length)
 
             # setting the delay model:
             if globals.args.qc_delay_model is DELAY_MODELS.none:
@@ -271,3 +271,17 @@ class Network(ns_Network):
             c_channel_model[key_delay_model] = ns.components.models.delaymodels.GaussianDelayModel(delay_mean = globals.args.cc_delay_mean * ms_to_ns_factor, delay_std = globals.args.cc_delay_std * ms_to_ns_factor)
 
         return c_channel_model
+    
+    def _gen_q_mem_model(self):
+        q_mem_model = None
+
+        NOISE_MODELS = globals.QMEM_NOISE_MODEL
+
+        if globals.args.qm_noise_model is NOISE_MODELS.none:
+            q_mem_model = None
+        elif globals.args.qm_noise_model is NOISE_MODELS.dephase:
+            q_mem_model = ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=globals.args.qm_noise_param, time_independent=globals.args.qm_noise_time_independent)
+        elif globals.args.qm_noise_model is NOISE_MODELS.depolar:
+            q_mem_model = ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=globals.args.qm_noise_param, time_independent=globals.args.qm_noise_time_independent)
+
+        return q_mem_model

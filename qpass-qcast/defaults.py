@@ -12,8 +12,8 @@ class Defaults: # The default values to use as arguments
     # yen_metric = YEN_METRICS.CR # CR performs slightly better than the others in the paper so sticking with this one
     yen_metric = YEN_METRICS.SUMDIST # for now. probably should use CR since that is the one paper chooses to go with.
     p3_hop = 1
-    max_sd_pairs_per_ts = 4
-    min_sd_pairs_per_ts = 4
+    max_sd_pairs_per_ts = 10
+    min_sd_pairs_per_ts = 1
     single_entanglement_flow_mode = True
     src_set = [] # empty list => all nodes
     dst_set = [] # empty list => all nodes
@@ -23,13 +23,13 @@ class Defaults: # The default values to use as arguments
     length = 1 # kilometers      # for any edge that does not have its length specified
     width = 1                    # for any edge that does not have its width specified
 
-    noise_model = QCHANNEL_NOISE_MODEL.none
-    noise_param = 0.6
-    noise_time_independent = True
+    qc_noise_model = QCHANNEL_NOISE_MODEL.depolar
+    qc_noise_param = 0.333
+    qc_noise_time_independent = True
 
-    loss_model = QCHANNEL_LOSS_MODEL.fibre
-    p_loss_init = 0
-    p_loss_length = 0
+    qc_loss_model = QCHANNEL_LOSS_MODEL.fibre
+    qc_p_loss_init = 0
+    qc_p_loss_length = 0
 
     # delay model params for quantum channels
     qc_delay_model = CHANNEL_DELAY_MODEL.none # Need to be careful about the delays since if it is too much then the node will assume that it didnt get it. (TODO: parameterize this timeout)
@@ -45,3 +45,7 @@ class Defaults: # The default values to use as arguments
     cc_delay_std = 0 # only used for gaussian delay model
 
     prob_swap_loss = 0 # the 'q' param
+
+    qm_noise_model = QMEM_NOISE_MODEL.dephase
+    qm_noise_param = 0.333
+    qm_noise_time_independent = True

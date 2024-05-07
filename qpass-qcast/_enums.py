@@ -64,3 +64,5 @@ QCHANNEL_MODEL_TYPES = Enum('QCHANNEL_MODEL_TYPES', ['delay_model', 'quantum_noi
 QCHANNEL_NOISE_MODEL = Enum('QCHANNEL_NOISE_MODEL', ['none', 'dephase', 'depolar']) # models that can be used when 'quantum_noise_model' is selected as model type
 QCHANNEL_LOSS_MODEL = Enum('QCHANNEL_LOSS_MODEL', ['none', 'fibre']) # models that can be used when 'quantum_loss_model' is selected as model type
 CHANNEL_DELAY_MODEL = Enum('CHANNEL_DELAY_MODEL', ['none', 'fibre', 'gaussian', 'fixed']) # Applicable to both quantum and classical channels
+
+QMEM_NOISE_MODEL = Enum('QMEM_NOISE_MODEL', ['none', 'dephase', 'depolar'])
