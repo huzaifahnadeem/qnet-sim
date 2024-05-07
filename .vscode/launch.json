@@ -14,6 +14,7 @@
             "justMyCode": false,
             // "args": ["--single_entanglement_flow_mode"]
             // "args": ["--config_file=${workspaceFolder}/qpass-qcast/sample_config.json"]
+            // "args": ["--qc_loss_model=fixed", "--qc_p_loss_init=1"]
         }
     ]
 }

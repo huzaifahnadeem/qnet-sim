@@ -182,7 +182,9 @@ class NodeEntity(pydynaa.Entity):
             qmem_label = self.network.gen_label(src_name, self.name, of=globals.CONN_CHANN_LABELS_FN_PARAM.CONN_QMEM, num=conn_num)
             qmem = self.node.subcomponents[qmem_label]
             qubit_received = True if qmem.num_used_positions == 1 else False
-            
+            if (qubit_received) and (qmem._memory_positions[0]._qubit.qstate is None): # this check is required for when loss model = fixed is used for connections. (this is not a netsquid model, i overrode fibre model for this simpler loss model and probably didnt do a good job at it. but the way i have done it is that if the qubit is dropped then only its state is changed to None)
+                qubit_received = False
+
             # update your link states
             self.add_to_link_state(src_name, self.name, conn_num, qubit_received)
 
@@ -741,7 +743,7 @@ class NodeEntity(pydynaa.Entity):
         qmem.put(teleported_qubit, positions=index)
 
         if not is_dest:
-            print(f" sim_time = {ns.sim_time():.1f}: {self.name}: swapped ebit after receiving corrections from {sender_name}")
+            # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: swapped ebit after receiving corrections from {sender_name}")
             if globals.args.alg is globals.ALGS.SLMPG:
                 self._swap(serving_pair, path)
 

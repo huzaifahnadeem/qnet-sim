@@ -76,6 +76,7 @@ class QCHANNEL_NOISE_MODEL(Enum): # models that can be used when 'quantum_noise_
 class QCHANNEL_LOSS_MODEL(Enum): # models that can be used when 'quantum_loss_model' is selected as model type
     none = 'none'
     fibre = 'fibre'
+    fixed = 'fixed' # doesn't exist in ns. added by myself
 
 class CHANNEL_DELAY_MODEL(Enum): # Applicable to both quantum and classical channels
     none = 'none'

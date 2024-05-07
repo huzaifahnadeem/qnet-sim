@@ -5,7 +5,6 @@ from netsquid.nodes import Network as ns_Network
 from netsquid.nodes.node import Node as ns_Node
 from netsquid.nodes.connections import DirectConnection
 from netsquid.components import QuantumChannel, ClassicalChannel, QuantumMemory
-# from netsquid.components.models.delaymodels import FibreDelayModel # TODO: need to add this later
 import networkx as nx
 from netsquid.components import QuantumMemory
 import netsquid as ns
@@ -14,6 +13,7 @@ import netsquid as ns
 import globals
 from topologies import network_choice
 from entities import NodeEntity
+import quantum
 
 class Node(ns_Node):
     def __init__(self, name, ID=None, qmemory=None, port_names=None, node_entity=None) -> None:
@@ -238,6 +238,8 @@ class Network(ns_Network):
                 q_channel_model[key_quantum_loss_model] = None
             elif globals.args.qc_loss_model is LOSS_MODELS.fibre:
                 q_channel_model[key_quantum_loss_model] = ns.components.models.qerrormodels.FibreLossModel(p_loss_init=globals.args.qc_p_loss_init, p_loss_length=globals.args.qc_p_loss_length)
+            elif globals.args.qc_loss_model is LOSS_MODELS.fixed:
+                q_channel_model[key_quantum_loss_model] = quantum.FixedProbabilityLoss(p_prob=globals.args.qc_p_loss_init)
 
             # setting the delay model:
             if globals.args.qc_delay_model is DELAY_MODELS.none:

@@ -23,11 +23,11 @@ class Defaults: # The default values to use as arguments
     length = 1 # kilometers      # for any edge that does not have its length specified
     width = 1                    # for any edge that does not have its width specified
 
-    qc_noise_model = QCHANNEL_NOISE_MODEL.depolar
-    qc_noise_param = 0.333
+    qc_noise_model = QCHANNEL_NOISE_MODEL.none
+    qc_noise_param = 0.0
     qc_noise_time_independent = True
 
-    qc_loss_model = QCHANNEL_LOSS_MODEL.fibre
+    qc_loss_model = QCHANNEL_LOSS_MODEL.none
     qc_p_loss_init = 0
     qc_p_loss_length = 0
 
@@ -40,12 +40,12 @@ class Defaults: # The default values to use as arguments
     # delay model params for classical channels
     # Need to be careful about the delays since if it is too much then the node will assume that it didnt get it. (TODO: parameterize this timeout)
     cc_delay_model = CHANNEL_DELAY_MODEL.none # using fixed model by default with delay = 1 ms. QPASS paper says that classical communications in such networks take around ~1 ms so using this value.
-    cc_delay_fixed = 1 # only used for fixed delay model
+    cc_delay_fixed = 0 # only used for fixed delay model
     cc_delay_mean = 0 # only used for gaussian delay model
     cc_delay_std = 0 # only used for gaussian delay model
 
     prob_swap_loss = 0 # the 'q' param
 
-    qm_noise_model = QMEM_NOISE_MODEL.dephase
-    qm_noise_param = 0.333
+    qm_noise_model = QMEM_NOISE_MODEL.none
+    qm_noise_param = 0
     qm_noise_time_independent = True

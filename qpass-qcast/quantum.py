@@ -1,6 +1,7 @@
 import netsquid as ns
 import random
 from numpy import pi
+import math
 
 # possible states that the data qubit can start in (will apply some combination of gates later)
 ket_minus = ns.h1   # ns.h1 = |−⟩  = 1/√(2)*(|0⟩ − |1⟩)
@@ -89,3 +90,24 @@ def get_data_qubit_for(sd_pair):
         return None, None
     
     return qubit, state_idx
+
+# Note: I made this simpler loss model to allow for the "p probability" param. The reason why FibreLossModel with p_loss_init=p and p_loss_length=0 wasnt working was probably because (for reasons that I dont understand) there was a check for qubit.is_number_state and it did some amplitude dampening instead of straight up dropping the qubit. This resulted in cases where the qubit was still detected on the other end and only affected the fidelity. So, I worked around this to just have a simpler model that just drops the qubit according to the probablity.
+class FixedProbabilityLoss(ns.components.models.qerrormodels.FibreLossModel):
+    def __init__(self, p_prob, p_loss_init=0, p_loss_length=0, rng=None):
+        super().__init__(p_loss_init, p_loss_length, rng)
+        self.p_prob = p_prob
+
+    def error_operation(self, qubits, delta_time=0, **kwargs):
+        for idx, qubit in enumerate(qubits):
+            if qubit is None:
+                continue
+            prob_loss = self.p_prob
+
+            discard = False
+            p = prob_loss
+            r = random.randint(1, 100)
+            if r <= (p*100):
+                discard = True
+            
+            if discard:
+                ns.qubits.qubitapi.discard(qubit)
