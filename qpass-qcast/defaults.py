@@ -8,6 +8,7 @@ class Defaults: # The default values to use as arguments
     network_toplogy = NET_TOPOLOGY.SLMP_GRID_4x4
     algorithm = ALGS.SLMPG
     num_ts = 5
+    ts_length = 10000
     yen_n = 25 # the paper has this fixed as 25
     # yen_metric = YEN_METRICS.CR # CR performs slightly better than the others in the paper so sticking with this one
     yen_metric = YEN_METRICS.SUMDIST # for now. probably should use CR since that is the one paper chooses to go with.

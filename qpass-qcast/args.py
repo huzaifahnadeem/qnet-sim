@@ -28,6 +28,7 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumInParamAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
     parser.add_argument('--alg', required=False, default=config.algorithm, type=globals.ALGS, action=globals.EnumInParamAction, help=f'Choice between SLMPg, SLMPl, QPASS, and QCAST. Default set to {config.algorithm}.')
     parser.add_argument('--num_ts', required=False, default=config.num_ts, type=int, help=f'The total number of timeslots to run for. Default set to {config.num_ts}')
+    parser.add_argument('--ts_length', required=False, default=config.ts_length, type=int, help=f'How long each timeslot is in terms of simulation instants. Default set to {config.ts_length}')
     parser.add_argument('--yen_n', required=False, default=config.yen_n, type=int, help=f'The starting number of offline paths to compute with yen\'s algorithm. Default set to {config.yen_n}.')
     parser.add_argument('--yen_metric', required=False, default=config.yen_metric, type=globals.YEN_METRICS, action=globals.EnumInParamAction, help=f'The metric to use to compute path length in yen\'s algorithm. Default set to "{config.yen_metric.value}".')
     parser.add_argument('--p3_hop', required=False, default=config.p3_hop, type=int, help=f'In phase 3 exchange link state to this many hop away neighbours. Default set to {config.p3_hop}.')

@@ -95,25 +95,59 @@
 
 
 
+# # echo "seed=0, mem depolar(0)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qc_loss_model=fixed --qc_p_loss_init=0
+
+# # echo "seed=0, mem depolar(0.25)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qc_loss_model=fixed --qc_p_loss_init=0.25
+
+# # echo "seed=0, mem depolar(0.5)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qc_loss_model=fixed --qc_p_loss_init=0.5
+
+# # echo "seed=0, mem depolar(0.75)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qc_loss_model=fixed --qc_p_loss_init=0.75
+
+# # echo "seed=0, mem depolar(1.0)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qc_loss_model=fixed --qc_p_loss_init=1
+
+
+
+
+
 # echo "seed=0, mem depolar(0)"
 python main.py --seed=0 --alg=SLMPg \
-    --qc_loss_model=fixed --qc_p_loss_init=0
+    --qc_loss_model=fibre --qc_p_loss_init=0 \
+    --qc_noise_model=dephase --qc_noise_param=0.25 --qc_noise_time_independent
+    
 
 # echo "seed=0, mem depolar(0.25)"
 python main.py --seed=0 --alg=SLMPg \
-    --qc_loss_model=fixed --qc_p_loss_init=0.25
+    --qc_loss_model=fibre --qc_p_loss_init=0.25 \
+    --qc_noise_model=dephase --qc_noise_param=0.25 --qc_noise_time_independent
+    
 
 # echo "seed=0, mem depolar(0.5)"
 python main.py --seed=0 --alg=SLMPg \
-    --qc_loss_model=fixed --qc_p_loss_init=0.5
+    --qc_loss_model=fibre --qc_p_loss_init=0.5 \
+    --qc_noise_model=dephase --qc_noise_param=0.25 --qc_noise_time_independent
+    
 
 # echo "seed=0, mem depolar(0.75)"
 python main.py --seed=0 --alg=SLMPg \
-    --qc_loss_model=fixed --qc_p_loss_init=0.75
+    --qc_loss_model=fibre --qc_p_loss_init=0.75 \
+    --qc_noise_model=dephase --qc_noise_param=0.25 --qc_noise_time_independent
+    
 
 # echo "seed=0, mem depolar(1.0)"
 python main.py --seed=0 --alg=SLMPg \
-    --qc_loss_model=fixed --qc_p_loss_init=1
+    --qc_loss_model=fibre --qc_p_loss_init=1 \
+    --qc_noise_model=dephase --qc_noise_param=0.25 --qc_noise_time_independent
+    
 
 
 

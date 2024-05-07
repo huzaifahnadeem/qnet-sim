@@ -950,7 +950,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
         if globals.args.alg is globals.ALGS.QPASS:
             self._run_qpass_p2_alg()
         
-        self._schedule_now(NIS.new_ts_evtype)
+        self._schedule_after(globals.args.ts_length, NIS.new_ts_evtype)
 
         # schedule the event for start of the next timeslot (unless currently in the last ts):
         if self.curr_ts < globals.args.num_ts:
