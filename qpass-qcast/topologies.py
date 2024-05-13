@@ -11,6 +11,19 @@ default_width = globals.args.width
 
 # TODO: Note that if there are parallel edges (same u-v nodes) then just add 1 to the width for each such edge. although if the lengths (or delay model etc) are different then cant consider that as a width increase its a separate edge
 
+def convert_to_undirected(graph):
+    '''
+    converts the graph into an undirected graph. For undirected graphs, if a u-v edge exists then v-u edge also added. parallel edges in multi graph are removed and instead a single edge of the average length is added with the right width. TODO: this is not ideal. but to use a multigraph everywhere else would require significant changes.
+    '''
+    # if type(graph) is nx.Graph:         # if it is an undirected graph
+    #     return graph
+    # elif type(graph) is nx.DiGraph:     # if it is a directed graph
+    #     return graph.to_undirected()
+    # elif type(graph) is nx.MultiGraph:  # if it is a multigraph
+    #     pass
+
+    return graph.to_undirected()
+
 def _slmp_grid_4x4(length=default_length, width=default_width):
     l = length
     w = width
@@ -37,7 +50,7 @@ def _slmp_grid_4x4(length=default_length, width=default_width):
                 }
         )
 
-def _teaver_graph_common(data_directory=data_directory_path, make_undirected=True): # make_undirected is true by default. if this is true then the these teaver graphs (which are directed) are converted to undirected graphs. Directed graphs will definitely cause issues without significant changes
+def _teaver_graph_common(data_directory=data_directory_path): # make_undirected is true by default. if this is true then the these teaver graphs (which are directed) are converted to undirected graphs. Directed graphs will definitely cause issues without significant changes
     # "topology.txt A list of rows containing edges with a source, destination, capacity, and probability of failure."
     
     nodes_file = data_directory + "/nodes.txt"
@@ -60,9 +73,7 @@ def _teaver_graph_common(data_directory=data_directory_path, make_undirected=Tru
         from_node = 's' + edge[1]
         G.add_edge(from_node, to_node, capacity=edge[2], prob_failure=edge[3], length=default_length, width=default_width) # added length and width for each edge. others are from the data file
     
-    if make_undirected:
-        return G.to_undirected()
-    return G
+    return convert_to_undirected(G)
 
 def _att():
     att = _teaver_graph_common(f'{data_directory_path}/ATT/')
@@ -72,7 +83,7 @@ def _ibm():
     ibm = _teaver_graph_common(f'{data_directory_path}/IBM/')
     return ibm
 
-def _abilene(make_undirected=True): # make_undirected is true by default. if this is true then the this directed graph is converted to an undirected graph. Directed graphs will definitely cause issues without significant changes):
+def _abilene(): # make_undirected is true by default. if this is true then the this directed graph is converted to an undirected graph. Directed graphs will definitely cause issues without significant changes):
     ### Abilene
     from utils import latitude_longitude_distance
 
@@ -103,18 +114,14 @@ def _abilene(make_undirected=True): # make_undirected is true by default. if thi
             length = 0.1 # sometimes src and dst are at the same lat/long. in those cases still add a small length so its not 0 (TODO: does it make sense to have length 0? if so leave as 0)
         abilene.add_edge(src_node, dst_node, capacity=capacity_kbps, ospf_weight=ospf_weight, length=length, width=default_width) # added length and width for each edge. others are from the data file
 
-    if make_undirected:
-        return abilene.to_undirected() # seems like this graph is supposed to be a directed graph. but converting to undirected versions since that seems more reasonable for our purposes. TODO just in case
-    else:
-        return abilene
+    return convert_to_undirected(abilene) # seems like this graph is supposed to be a directed graph. but converting to undirected versions since that seems more reasonable for our purposes.
 
-def _surfnet(make_undirected=True): # make_undirected is true by default. if this is true then this multigraph is converted to an undirected graph. Directed graphs will definitely cause issues without significant changes):):
+def _surfnet(): # make_undirected is true by default. if this is true then this multigraph is converted to an undirected graph. Directed graphs will definitely cause issues without significant changes):):
     ### SURFnet
     # SURFnet = nx.read_gml(f'{data_directory_path}/SURFnet/Surfnet.gml') # this is not working for some reason
     surfnet = nx.read_graphml(f'{data_directory_path}/SURFnet/Surfnet.graphml') # but the data also has this other file type and this works
-    if make_undirected:
-        return surfnet.to_undirected() # TODO: not working properly. check later
-    return surfnet
+    
+    return convert_to_undirected(surfnet) # TODO: not working properly. check later
 
 def _erdos_renyi_50_01():
     ### Erdos Renyi G(50, 0.1)

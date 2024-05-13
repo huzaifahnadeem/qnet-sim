@@ -15,6 +15,7 @@
             // "args": ["--single_entanglement_flow_mode"]
             // "args": ["--config_file=${workspaceFolder}/qpass-qcast/sample_config.json"]
             // "args": ["--qc_loss_model=fixed", "--qc_p_loss_init=1"]
+            // "args": ["--seed=0", "--alg=SLMPg", "--qc_delay_model=gaussian", "--qc_delay_mean=1", "--qc_delay_std=0.5"]
         }
     ]
 }
