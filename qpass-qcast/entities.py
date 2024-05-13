@@ -288,13 +288,18 @@ class NodeEntity(pydynaa.Entity):
             self.send_message(next_on_path_name, packet)
 
     def _establish_links(self):
-        if globals.args.two_sided_epr == False: # TODO: add a third option where the connection generates the paper (like in netsquid tutorial/examples)
-            raise NotImplementedError("one sided epr share not implemented yet")
+        if globals.args.two_sided_epr not in [True, False]: # TODO: add a third option where the connection itself generates the epr pairs (like in netsquid tutorial/examples)
+            raise NotImplementedError("connection-generated epr pairs not implemented yet")
         
         # TODO: implement nc functionality
         # nc = globals.args.p2_nc
         for qubit_index in self.curr_qubit_channel_assignment.keys():
             to_node, channel_num = self.curr_qubit_channel_assignment[qubit_index]
+            if not globals.args.two_sided_epr: # i.e. one sided epr generation (neighbour with the larger name responsible to generate the pair, in that case)
+                if self.name > to_node:
+                    pass # this node is responsible
+                else:
+                    continue # the other node is responsible
             q1, q2 = quantum.gen_epr_pair()
             self.node.qmemory.put(q1, positions=qubit_index)
             self.send_qubit(to_node, q2, channel_num)
