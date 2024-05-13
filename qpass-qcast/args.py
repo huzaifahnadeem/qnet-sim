@@ -114,3 +114,17 @@ def args_range_check(): # TODO: https://gist.github.com/dmitriykovalev/2ab1aa33a
         limit = '0'
     if raise_exception:
         raise ValueError(f"The input parameter '{param}' must be {sign} {limit}.")
+    
+
+def args_value_check():
+    raise_exception = False
+    if (globals.args.qc_delay_mean - 3*globals.args.qc_delay_std) < 0: # the 3*std comes fromt the empirical rule "approximately 99.7% of observations fall within three standard deviations of the mean"
+        raise_exception = True
+        param = '--qc_delay_mean, --qc_delay_std'
+        error_msg = 'With the selected mean and standard dev., the delay can be a negative value.'
+    elif (globals.args.cc_delay_mean - 3*globals.args.cc_delay_std) < 0:
+        raise_exception = True
+        param = '--cc_delay_mean, --cc_delay_std'
+        error_msg = 'With the selected mean and standard dev., the delay can be a negative value.'
+    if raise_exception:
+        raise ValueError(f"Invalid value(s) for input parameter(s) '{param}': {error_msg}.")

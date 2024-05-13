@@ -14,3 +14,4 @@ def apply_args() -> None:
 def get_args() -> None:
     args.get_args()
     args.args_range_check()
+    args.args_value_check()
