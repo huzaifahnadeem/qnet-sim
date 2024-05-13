@@ -296,7 +296,7 @@ class NodeEntity(pydynaa.Entity):
         for qubit_index in self.curr_qubit_channel_assignment.keys():
             to_node, channel_num = self.curr_qubit_channel_assignment[qubit_index]
             if not globals.args.two_sided_epr: # i.e. one sided epr generation (neighbour with the larger name responsible to generate the pair, in that case)
-                if self.name > to_node:
+                if self._neighbour_responsible_for_ebit(neighbour_name=to_node):
                     pass # this node is responsible
                 else:
                     continue # the other node is responsible
