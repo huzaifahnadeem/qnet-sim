@@ -6,7 +6,7 @@ from netsquid.nodes.node import Node as ns_Node
 from netsquid.nodes.connections import DirectConnection
 from netsquid.components import QuantumChannel, ClassicalChannel, QuantumMemory
 import networkx as nx
-from netsquid.components import QuantumMemory
+# from netsquid.components import QuantumMemory
 import netsquid as ns
 
 
@@ -22,9 +22,10 @@ class Node(ns_Node):
 
 class Network(ns_Network):
     def __init__(self, name=globals.args.network.value) -> None:
-        self.nx_graph = network_choice() # used for yen's algorithm and for visualizing the network situation (<- TODO this second part)
+        # network_choice returns a full multigraph and a simplified graph (also of type multigraph)
+        self.graph, self.graph_full = network_choice() # used for yen's algorithm and for visualizing the network situation (<- TODO this second part)
+        self.nx_graph = self.graph # TODO: this is here temporarily so avoid any issues with references to the old var name "self.nx_graph". remove this when all references are changed to either self.graph_full or self.graph
         
-        # TODO: assumed input network is SLMP_GRID_4x4. so num of quantum memories hardcoded below. change later when you implement other networks
         super().__init__(name=name)
         super().add_nodes(self._create_nodes())
         
@@ -35,12 +36,12 @@ class Network(ns_Network):
         # TODO: log at the end of init that network has been initialized? or maybe in main somewhere
 
     def node_names(self):
-        return nx.nodes(self.nx_graph)
+        return nx.nodes(self.graph)
 
     def _create_nodes(self):
         for node_name in self.node_names():
             # TODO: Assuming unique name. might require an ID field if that is not the case. for SLMP_GRID_4x4 this is fine.
-            degree = self.nx_graph.degree[node_name]
+            degree = self.graph.degree[node_name]
             qubit_capacity = degree # By default go with qubit_capacity = degree of node just like SLMP paper. TODO: one should be able to define this in topology for QPASS and probably others
             this_node = Node(
                 name = node_name,
@@ -55,7 +56,7 @@ class Network(ns_Network):
     def _create_and_add_connections(self) -> None:
         already_done = []
         for u in self.node_names():
-            for _, v, edge_data in self.nx_graph.edges(u, data=True):
+            for _, v, edge_data in self.graph.edges(u, data=True):
                 if ((u, v) not in already_done) and ((v, u) not in already_done):
                     self._gen_connection(u, v, edge_data['length'], edge_data['width'])
                 already_done.append((u, v))

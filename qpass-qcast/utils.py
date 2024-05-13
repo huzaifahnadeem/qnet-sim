@@ -33,7 +33,7 @@ def latitude_longitude_distance(lat1, lat2, lon1, lon2):
 _slmpg_paths_found_already = {}
 
 # This function is here and is not a property of entities (like it was previously) because of the fact that nx.shortest_path() returns any of the shortest paths and when this function was running seperately on each node entity, the results were inconsistent across nodes. So now the first time it is called, it caches the result and uses that later on.
-def slmpg_path_finder(links_graph, sd_pairs): # TODO: i think this is quite inefficient.
+def slmpg_find_paths(links_graph, sd_pairs): # TODO: i think this is quite inefficient.
         # TODO: multi flow stuff
         
         # use cached result if it exists

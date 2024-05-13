@@ -66,7 +66,7 @@ class NodeEntity(pydynaa.Entity):
         k_hop_neighbours = []
 
         hop = globals.args.p3_hop
-        ego_graph = nx.ego_graph(G=self.network.nx_graph, n=self.name, radius=hop)
+        ego_graph = nx.ego_graph(G=self.network.graph, n=self.name, radius=hop)
         k_neighbours = list(ego_graph.nodes())
         k_neighbours.remove(self.name) # as the above function works, the list would also include the node itself. So remove that.
 
@@ -86,8 +86,8 @@ class NodeEntity(pydynaa.Entity):
             # one classical connection:
             clabel = self.network.gen_label(self.name, n.name, of=cconn_option)
             self.connections[n.name].append(self.network.get_connection(self.name, n.name, clabel))
-            # w quantum connections:
-            for chan_num in range(self.network.nx_graph[self.name][n.name]["width"]):
+            # 'w' quantum connections:
+            for chan_num in range(self.network.graph[self.name][n.name][0]["width"]):
                 qlabel = self.network.gen_label(self.name, n.name, of=qconn_option, num=chan_num)
                 self.connections[n.name].append(self.network.get_connection(self.name, n.name, qlabel))
 
@@ -107,7 +107,7 @@ class NodeEntity(pydynaa.Entity):
                 raise ValueError(f"Node {v.name} is not an immediate neighbour of {self.name} so this message cannot be sent.")
         else:
             # find next hop on the shortest path and send it to that node.
-            shortest_path = list(nx.shortest_path(self.network.nx_graph, self.name, v))
+            shortest_path = list(nx.shortest_path(self.network.graph, self.name, v))
             send_to = shortest_path[shortest_path.index(self.name) + 1]
         self.network.send_message(self.name, send_to, message)
         
@@ -468,10 +468,10 @@ class NodeEntity(pydynaa.Entity):
             nonlocal self
             # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p4 start.")
             if globals.args.alg is globals.ALGS.SLMPG:
-                links_graph = self._gen_links_graph(self.network.nx_graph, self.neighbours_link_state)
+                links_graph = self._gen_links_graph(self.network.graph, self.neighbours_link_state)
                 sd_pairs = self.sd_pairs
                 # print(f"sd pairs: {sd_pairs}")
-                paths = utils.slmpg_path_finder(links_graph, sd_pairs)
+                paths = utils.slmpg_find_paths(links_graph, sd_pairs)
                 
                 # for testing:
                 # paths = [['n10', 'n6', 'n2', 'n3'], ['n10', 'n11', 'n7', 'n3'], ['n10', 'n9', 'n5', 'n6', 'n7', 'n8', 'n4', 'n3']] # getting diff orders so fixed for now
@@ -626,6 +626,7 @@ class NodeEntity(pydynaa.Entity):
         # returns the ebit and also returns the ebit's index in main qmem or conn mem. also returns whether this self.node's ebit is used or not
         ebit = None
 
+        using_my_ebit = None
         for link in self.link_state['final']:
             if link[0] == node_name:
                 using_my_ebit = False
@@ -637,16 +638,20 @@ class NodeEntity(pydynaa.Entity):
                 break
         
         qmem = None
-        if using_my_ebit:
-            qubit_mem_index = [n.name for n in self.imm_neighbours].index(node_name)
-            qmem = self.node.qmemory
+        if using_my_ebit is not None:
+            if using_my_ebit:
+                qubit_mem_index = [n.name for n in self.imm_neighbours].index(node_name)
+                qmem = self.node.qmemory
+            else:
+                conn_qmem_label = self.network.gen_label(node_name, self.name, of=globals.CONN_CHANN_LABELS_FN_PARAM.CONN_QMEM, num=channel_num)
+                conn_qmem = self.node.subcomponents[conn_qmem_label]
+                qmem = conn_qmem
+                qubit_mem_index = 0 # only 1 position for connection memory on each node
+            
+            ebit = qmem.mem_positions[qubit_mem_index].get_qubit(remove=True)
         else:
-            conn_qmem_label = self.network.gen_label(node_name, self.name, of=globals.CONN_CHANN_LABELS_FN_PARAM.CONN_QMEM, num=channel_num)
-            conn_qmem = self.node.subcomponents[conn_qmem_label]
-            qmem = conn_qmem
-            qubit_mem_index = 0 # only 1 position for connection memory on each node
+            ebit, qubit_mem_index, using_my_ebit = None, None, None
         
-        ebit = qmem.mem_positions[qubit_mem_index].get_qubit(remove=True)
         return ebit, qubit_mem_index, using_my_ebit
 
     def _role(self, paths):
@@ -758,13 +763,18 @@ class NodeEntity(pydynaa.Entity):
         teleported_qubit, fidelity = quantum.apply_corrections(e2e_ebit, (m0, m1), original_state_idx=data_qubit_state)
         print(f" sim_time = {ns.sim_time():.1f}: {self.name}: received the data qubit with fidelity {fidelity:.3f} over path {path}")
 
-    def _gen_links_graph(self, og_graph, link_states: list):
+    def _gen_links_graph(self, og_graph, neighbours_link_states: list):
         # generates an nx graph comprising of successful links (edges over which epr pairs have been shared successfully)
-        links_graph = nx.Graph()
+        link_states = neighbours_link_states
+        link_states[self.name] = self.link_state
+        links_graph = nx.MultiGraph()
+        already_added = []
         for n in link_states.keys():
             edges_list = link_states[n]['final']
             for e in edges_list:
-                links_graph.add_edge(e[0], e[1], channel_num=e[2], length=og_graph[e[0]][e[1]]['length'])
+                if e not in already_added:
+                    already_added.append(e)
+                    links_graph.add_edge(e[0], e[1], channel_num=e[2], length=og_graph[e[0]][e[1]][0]['length'])
         return links_graph
 
     def _set_event_handler_params(self, ev_type, ev_src, params):
