@@ -36,6 +36,7 @@ def main() -> None:
 
     # start the simulation
     run_stats = ns.sim_run()
+    nis.epr_track_print()
     print(run_stats)
 
 if __name__ == '__main__':

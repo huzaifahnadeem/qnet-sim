@@ -19,7 +19,7 @@ class Defaults: # The default values to use as arguments
     src_set = [] # empty list => all nodes
     dst_set = [] # empty list => all nodes
     p2_nc = 1
-    two_sided_epr = True
+    two_sided_epr = False
     link_establish_timeout = 10 # arbitrary for now
     length = 1 # kilometers      # for any edge that does not have its length specified
     width = 1                    # for any edge that does not have its width specified
