@@ -27,6 +27,8 @@ class Defaults: # The default values to use as arguments
     qc_noise_model = QCHANNEL_NOISE_MODEL.none
     qc_noise_param = 0.0
     qc_noise_time_independent = True
+    qc_noise_t1 = 0
+    qc_noise_t2 = 0
 
     qc_loss_model = QCHANNEL_LOSS_MODEL.none
     qc_p_loss_init = 0

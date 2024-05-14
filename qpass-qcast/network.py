@@ -89,7 +89,7 @@ class Network(ns_Network):
         return label
     
     def _gen_connection(self, u_name, v_name, length, width) -> tuple:
-        # TODO: quantum_noise_model, quantum_loss_model, delay model (for classic), not sure if it exists but loss model for classic too (can also implement if doesnt exist e.g. 20% packet drop rate etc.)
+        # TODO: maybe add a classical loss model e.g. 20% chance of packet drop? might be too much for something like this esp. since these are presumably reliable networks
         label_options = globals.CONN_CHANN_LABELS_FN_PARAM
         network = super()
         u = network.get_node(u_name)
@@ -233,6 +233,8 @@ class Network(ns_Network):
                 q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=globals.args.qc_noise_param, time_independent=globals.args.qc_noise_time_independent)
             elif globals.args.qc_noise_model is NOISE_MODELS.depolar:
                 q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=globals.args.qc_noise_param, time_independent=globals.args.qc_noise_time_independent)
+            elif globals.args.qc_noise_model is NOISE_MODELS.t1t2:
+                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.T1T2NoiseModel(T1=globals.args.qc_noise_t1, T2=globals.args.qc_noise_t2)
             
             # setting the loss model:
             if globals.args.qc_loss_model is LOSS_MODELS.none:

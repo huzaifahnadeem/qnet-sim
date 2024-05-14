@@ -72,6 +72,7 @@ class QCHANNEL_NOISE_MODEL(Enum): # models that can be used when 'quantum_noise_
     none = 'none'
     dephase = 'dephase'
     depolar = 'depolar'
+    t1t2 = 't1t2'
 
 class QCHANNEL_LOSS_MODEL(Enum): # models that can be used when 'quantum_loss_model' is selected as model type
     none = 'none'
