@@ -230,9 +230,9 @@ class Network(ns_Network):
             if globals.args.qc_noise_model is NOISE_MODELS.none:
                 q_channel_model[key_quantum_noise_model] = None
             elif globals.args.qc_noise_model is NOISE_MODELS.dephase:
-                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=globals.args.qc_noise_param, time_independent=globals.args.qc_noise_time_independent)
+                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=globals.args.qc_noise_rate, time_independent=globals.args.qc_noise_time_independent)
             elif globals.args.qc_noise_model is NOISE_MODELS.depolar:
-                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=globals.args.qc_noise_param, time_independent=globals.args.qc_noise_time_independent)
+                q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=globals.args.qc_noise_rate, time_independent=globals.args.qc_noise_time_independent)
             elif globals.args.qc_noise_model is NOISE_MODELS.t1t2:
                 q_channel_model[key_quantum_noise_model] = ns.components.models.qerrormodels.T1T2NoiseModel(T1=globals.args.qc_noise_t1, T2=globals.args.qc_noise_t2)
             
@@ -285,8 +285,8 @@ class Network(ns_Network):
         if globals.args.qm_noise_model is NOISE_MODELS.none:
             q_mem_model = None
         elif globals.args.qm_noise_model is NOISE_MODELS.dephase:
-            q_mem_model = ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=globals.args.qm_noise_param, time_independent=globals.args.qm_noise_time_independent)
+            q_mem_model = ns.components.models.qerrormodels.DephaseNoiseModel(dephase_rate=globals.args.qm_noise_rate, time_independent=globals.args.qm_noise_time_independent)
         elif globals.args.qm_noise_model is NOISE_MODELS.depolar:
-            q_mem_model = ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=globals.args.qm_noise_param, time_independent=globals.args.qm_noise_time_independent)
+            q_mem_model = ns.components.models.qerrormodels.DepolarNoiseModel(depolar_rate=globals.args.qm_noise_rate, time_independent=globals.args.qm_noise_time_independent)
 
         return q_mem_model

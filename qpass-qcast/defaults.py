@@ -19,13 +19,13 @@ class Defaults: # The default values to use as arguments
     src_set = [] # empty list => all nodes
     dst_set = [] # empty list => all nodes
     p2_nc = 1
-    two_sided_epr = False
+    two_sided_epr = True
     link_establish_timeout = 10 # arbitrary for now
     length = 1 # kilometers      # for any edge that does not have its length specified
     width = 1                    # for any edge that does not have its width specified
 
     qc_noise_model = QCHANNEL_NOISE_MODEL.none
-    qc_noise_param = 0.0
+    qc_noise_rate = 0.0
     qc_noise_time_independent = True
     qc_noise_t1 = 0
     qc_noise_t2 = 0
@@ -50,5 +50,5 @@ class Defaults: # The default values to use as arguments
     prob_swap_loss = 0 # the 'q' param
 
     qm_noise_model = QMEM_NOISE_MODEL.none
-    qm_noise_param = 0
+    qm_noise_rate = 0
     qm_noise_time_independent = True

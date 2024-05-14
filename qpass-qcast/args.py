@@ -46,12 +46,12 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--width', required=False, default=config.width, type=int, help=f'Used for any edge that does not have its width specified. Default set to {config.width}.')
     # connections models related:
     parser.add_argument('--qc_noise_model', required=False, default=config.qc_noise_model, type=globals.QCHANNEL_NOISE_MODEL, action=globals.EnumInParamAction, help=f'This is the noise model to use for quantum channels. Options: {[x.name for x in globals.QCHANNEL_NOISE_MODEL]}')
-    parser.add_argument('--qc_noise_param', required=False, default=config.qc_noise_param, type=float, help=f'The parameter (rate) to be used with dephase and depolar noise models.')
+    parser.add_argument('--qc_noise_rate', required=False, default=config.qc_noise_rate, type=float, help=f'The parameter (rate) to be used with dephase and depolar noise models.')
     parser.add_argument('--qc_noise_t1', required=False, default=config.qc_noise_t1, type=float, help=f'The "T1" parameter for the T1T2 noise model')
     parser.add_argument('--qc_noise_t2', required=False, default=config.qc_noise_t2, type=float, help=f'The "T2" parameter for the T1T2 noise model')
     # adding pair of args for whether noise model is time independent or not. If it is independent then noise_param is probability. If not, then it is the in Hz.
-    parser.add_argument('--qc_noise_time_independent', required=False, action='store_true', help=f'If this argument used then the --qc_noise_model is time independent and --qc_noise_param is the probability to be used with the model.')
-    parser.add_argument('--qc_noise_time_dependent', dest='--qc_noise_time_independent', action='store_false', help=f'If this argument used then the --qc_noise_model is time dependent and --qc_noise_param, in Hz, is to be used with the model.')
+    parser.add_argument('--qc_noise_time_independent', required=False, action='store_true', help=f'If this argument used then the --qc_noise_model is time independent and --qc_noise_rate is the probability to be used with the model.')
+    parser.add_argument('--qc_noise_time_dependent', dest='--qc_noise_time_independent', action='store_false', help=f'If this argument used then the --qc_noise_model is time dependent and --qc_noise_rate, in Hz, is to be used with the model.')
     parser.set_defaults(qc_noise_time_independent=config.qc_noise_time_independent)
     parser.add_argument('--qc_loss_model', required=False, default=config.qc_loss_model, type=globals.QCHANNEL_LOSS_MODEL, action=globals.EnumInParamAction, help=f'This is the loss model to use for quantum channels. Options: {[x.name for x in globals.QCHANNEL_LOSS_MODEL]}')
     parser.add_argument('--qc_p_loss_init', required=False, default=config.qc_p_loss_init, type=float, help=f'The probability of losing the qubit as it enters the channel. Only used with --qc_loss_model=fibre and as the fixed probability of loss "p" in --qc_loss_model=fixed')
@@ -66,9 +66,9 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--cc_delay_std', required=False, default=config.cc_delay_std, type=float, help=f'The standard deviation for delay in micro seconds to use with channels. Only used with --cc_delay_model=gaussian')
     parser.add_argument('--prob_swap_loss', required=False, default=config.prob_swap_loss, type=float, help=f'The probability that a pair of qubits would be lost when a swap operation is performed. Its the \'q\' parameter.') # TODO: couldnt find a way through netsquid. currently going with randomly generating a number and checking against this param when swapping
     parser.add_argument('--qm_noise_model', required=False, default=config.qm_noise_model, type=globals.QMEM_NOISE_MODEL, action=globals.EnumInParamAction, help=f'This is the noise model to use for quantum memories. Options: {[x.name for x in globals.QMEM_NOISE_MODEL]}')
-    parser.add_argument('--qm_noise_param', required=False, default=config.qm_noise_param, type=float, help=f'')
-    parser.add_argument('--qm_noise_time_independent', required=False, action='store_true', help=f'If this argument used then the --qm_noise_model is time independent and --qm_noise_param is the probability to be used with the model.')
-    parser.add_argument('--qm_noise_time_dependent', dest='--qm_noise_time_independent', action='store_false', help=f'If this argument used then the --qm_noise_model is time dependent and --qm_noise_param, in Hz, is to be used with the model.')
+    parser.add_argument('--qm_noise_rate', required=False, default=config.qm_noise_rate, type=float, help=f'')
+    parser.add_argument('--qm_noise_time_independent', required=False, action='store_true', help=f'If this argument used then the --qm_noise_model is time independent and --qm_noise_rate is the probability to be used with the model.')
+    parser.add_argument('--qm_noise_time_dependent', dest='--qm_noise_time_independent', action='store_false', help=f'If this argument used then the --qm_noise_model is time dependent and --qm_noise_rate, in Hz, is to be used with the model.')
     parser.set_defaults(qm_noise_time_independent=config.qm_noise_time_independent)
     
     globals.args = parser.parse_args()

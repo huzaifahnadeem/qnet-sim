@@ -564,7 +564,7 @@ class NodeEntity(pydynaa.Entity):
                                     d_src = [x for x in d_src if x[0] != closest_to_dst]
                                     d_dst = [x for x in d_dst if x[0] != closest_to_src]
                                     
-                                    print(f" sim_time = {ns.sim_time():.1f}: {self.name} is swapping for [{closest_to_src}, {self.name}, {closest_to_dst}]")
+                                    # print(f" sim_time = {ns.sim_time():.1f}: {self.name} is swapping for [{closest_to_src}, {self.name}, {closest_to_dst}]")
                                     serving_pair = (src, dst)
                                     path = [closest_to_src, self.name, closest_to_dst]
                                     self._swap(serving_pair, path)
