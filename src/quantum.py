@@ -111,3 +111,18 @@ class FixedProbabilityLoss(ns.components.models.qerrormodels.FibreLossModel):
             
             if discard:
                 ns.qubits.qubitapi.discard(qubit)
+
+class CChannelProbLoss(ns.components.models.cerrormodels.ClassicalErrorModel):
+    def __init__(self, prob, **kwargs):
+        super().__init__(**kwargs)
+        self.prob_loss = prob
+
+    def error_operation(self, items, delta_time=0, **kwargs):
+        for i in range(len(items)):
+            drop = False
+            p = self.prob_loss
+            r = random.randint(1, 100)
+            if r <= (p*100):
+                drop = True
+            if drop:
+                items[i] = {}

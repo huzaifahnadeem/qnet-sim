@@ -62,6 +62,8 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--qc_delay_mean', required=False, default=config.qc_delay_mean, type=float, help=f'The mean delay in nano seconds to use with channels. Only used with --qc_delay_model=gaussian')
     parser.add_argument('--qc_delay_std', required=False, default=config.qc_delay_std, type=float, help=f'The standard deviation for delay in nano seconds to use with channels. Only used with --qc_delay_model=gaussian')
     parser.add_argument('--qc_delay_photon_speed', required=False, default=config.qc_delay_photon_speed, type=float, help=f'The speed of photons (in km/s) travelling through the channel. Only used with --qc_delay_model=fibre.')
+    parser.add_argument('--cc_loss_model', required=False, default=config.cc_loss_model, type=globals.CCHANNEL_LOSS_MODEL, action=globals.EnumInParamAction, help=f'This is the loss model to use for classical channels. Options: {[x.name for x in globals.CCHANNEL_LOSS_MODEL]}')
+    parser.add_argument('--cc_loss_prob', required=False, default=config.cc_loss_prob, type=float, help=f'The probability of losing a packet over a channel. Only used with --cc_loss_model=prob')
     parser.add_argument('--cc_delay_model', required=False, default=config.cc_delay_model, type=globals.CHANNEL_DELAY_MODEL, action=globals.EnumInParamAction, help=f'This is the delay model to use for classical channels. Options: {[x.name for x in globals.CHANNEL_DELAY_MODEL]}')
     parser.add_argument('--cc_delay_fixed', required=False, default=config.cc_delay_fixed, type=float, help=f'The fixed delay in micro seconds to use with channels. Only used with --cc_delay_model=fixed')
     parser.add_argument('--cc_delay_mean', required=False, default=config.cc_delay_mean, type=float, help=f'The mean delay in micro seconds to use with channels. Only used with --cc_delay_model=gaussian')
@@ -117,6 +119,26 @@ def args_range_check(): # TODO: https://gist.github.com/dmitriykovalev/2ab1aa33a
         param = '--link_establish_timeout'
         sign = '>='
         limit = '0'
+    elif not (globals.args.prob_swap_loss >= 0 and globals.args.prob_swap_loss <= 1):
+        raise_exception = True
+        param = '--prob_swap_loss'
+        sign = '>= 0 and <= 1'
+        limit = ""
+    elif not (globals.args.cc_loss_prob >= 0 and globals.args.cc_loss_prob <= 1):
+        raise_exception = True
+        param = '--cc_loss_prob'
+        sign = '>= 0 and <= 1'
+        limit = ""
+    elif not (globals.args.qc_p_loss_init >= 0 and globals.args.qc_p_loss_init <= 1):
+        raise_exception = True
+        param = '--qc_p_loss_init'
+        sign = '>= 0 and <= 1'
+        limit = ""
+    elif not (globals.args.qc_p_loss_length >= 0 and globals.args.qc_p_loss_length <= 1):
+        raise_exception = True
+        param = '--qc_p_loss_length'
+        sign = '>= 0 and <= 1'
+        limit = ""
     if raise_exception:
         raise ValueError(f"The input parameter '{param}' must be {sign} {limit}.")
     

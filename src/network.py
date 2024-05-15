@@ -86,8 +86,7 @@ class Network(ns_Network):
         
         return label
     
-    def _gen_connection(self, u_name, v_name, length, width) -> tuple:
-        # TODO: maybe add a classical loss model e.g. 20% chance of packet drop? might be too much for something like this esp. since these are presumably reliable networks
+    def _gen_connection(self, u_name, v_name, length, width):
         label_options = globals.CONN_CHANN_LABELS_FN_PARAM
         network = super()
         u = network.get_node(u_name)
@@ -173,7 +172,11 @@ class Network(ns_Network):
         # print(f'rcv msg:{m}')
         for i in range(len(m.items)): # there can be more than 1 message packet in queue (if received >1 before reading and clearing message queue (happens internally -- i dont touch that part))
             msg_packet = m.items[i]
+            if msg_packet == {}:
+                # then it means the packet was lost over the channel
+                continue
             header = {}
+
             header['src'] = m.meta['header'][0]
             header['dst'] = m.meta['header'][1]
             header['channel_num'] = m.meta['header'][2]
@@ -261,17 +264,28 @@ class Network(ns_Network):
         ms_to_ns_factor = 1000 # to convert ms to ns, multiple the ms value by 1000.
         c_channel_model = {}
         key_delay_model = globals.QCHANNEL_MODEL_TYPES.delay_model.name
+        key_classical_loss_model = globals.CCHANNEL_MODEL_TYPES.classical_loss_model.name
         DELAY_MODELS = globals.CHANNEL_DELAY_MODEL
+        LOSS_MODELS = globals.CCHANNEL_LOSS_MODEL
 
-        # setting the delay model:
-        if globals.args.cc_delay_model is DELAY_MODELS.none:
-            c_channel_model[key_delay_model] = None
-        elif globals.args.cc_delay_model is DELAY_MODELS.fibre:
-            c_channel_model[key_delay_model] = ns.components.models.delaymodels.FibreDelayModel(c=globals.args.cc_delay_photon_speed)
-        elif globals.args.cc_delay_model is DELAY_MODELS.fixed:
-            c_channel_model[key_delay_model] = ns.components.models.delaymodels.FixedDelayModel(delay = globals.args.cc_delay_fixed * ms_to_ns_factor)
-        elif globals.args.cc_delay_model is DELAY_MODELS.gaussian:
-            c_channel_model[key_delay_model] = ns.components.models.delaymodels.GaussianDelayModel(delay_mean = globals.args.cc_delay_mean * ms_to_ns_factor, delay_std = globals.args.cc_delay_std * ms_to_ns_factor)
+        if (globals.args.cc_loss_model is LOSS_MODELS.none) and (globals.args.cc_delay_model is DELAY_MODELS.none):
+            c_channel_model = None
+        else:
+            # setting the delay model:
+            if globals.args.cc_delay_model is DELAY_MODELS.none:
+                c_channel_model[key_delay_model] = None
+            elif globals.args.cc_delay_model is DELAY_MODELS.fibre:
+                c_channel_model[key_delay_model] = ns.components.models.delaymodels.FibreDelayModel(c=globals.args.cc_delay_photon_speed)
+            elif globals.args.cc_delay_model is DELAY_MODELS.fixed:
+                c_channel_model[key_delay_model] = ns.components.models.delaymodels.FixedDelayModel(delay = globals.args.cc_delay_fixed * ms_to_ns_factor)
+            elif globals.args.cc_delay_model is DELAY_MODELS.gaussian:
+                c_channel_model[key_delay_model] = ns.components.models.delaymodels.GaussianDelayModel(delay_mean = globals.args.cc_delay_mean * ms_to_ns_factor, delay_std = globals.args.cc_delay_std * ms_to_ns_factor)
+
+            # setting the loss model:
+            if globals.args.cc_loss_model is LOSS_MODELS.none:
+                c_channel_model[key_classical_loss_model] = None
+            elif globals.args.cc_loss_model is LOSS_MODELS.prob:
+                c_channel_model[key_classical_loss_model] = quantum.CChannelProbLoss(prob=globals.args.cc_loss_prob)
 
         return c_channel_model
     

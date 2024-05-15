@@ -62,6 +62,12 @@ MSG_TYPE = Enum('MSG_TYPE', ['ebit_sent', 'ebit_received', 'link_state', 'correc
 
 CONN_CHANN_LABELS_FN_PARAM = Enum('CONN_CHANN_LABELS_FN_PARAM', ['CCHANNEL', 'QCHANNEL', 'QCONNECTION', 'CCONNECTION', 'CONN_QMEM'])
 
+class CCHANNEL_MODEL_TYPES(Enum): # netsquid requires these exact strings when setting a model for a channel (except 'none' is my own)
+    delay_model = 'delay_model'
+    classical_noise_model = 'classical_noise_model'
+    classical_loss_model = 'classical_loss_model'
+    none = 'none'
+
 class QCHANNEL_MODEL_TYPES(Enum): # netsquid requires these exact strings when setting a model for a channel (except 'none' is my own)
     delay_model = 'delay_model'
     quantum_noise_model = 'quantum_noise_model'
@@ -89,3 +95,7 @@ class QMEM_NOISE_MODEL(Enum):
     none = 'none'
     dephase = 'dephase'
     depolar = 'depolar'
+
+class CCHANNEL_LOSS_MODEL(Enum):
+    none = 'none'
+    prob = 'prob' # probabilistic
