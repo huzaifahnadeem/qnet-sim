@@ -40,15 +40,13 @@ class Network(ns_Network):
 
     def _create_nodes(self):
         for node_name in self.node_names():
-            # TODO: Assuming unique name. might require an ID field if that is not the case. for SLMP_GRID_4x4 this is fine.
+            # Assuming unique name. might require an ID field if that is not the case.
             degree = self.graph.degree[node_name]
             qubit_capacity = degree # By default go with qubit_capacity = degree of node just like SLMP paper. TODO: one should be able to define this in topology for QPASS and probably others
             this_node = Node(
                 name = node_name,
-                # not using ID. but might be good to have? currently assume unique names so dont need IDs.
-                # ID = int(node_name[1:]), # TODO: this is assuming SLMP_GRID_4x4. make dynamic
+                # ID = int(node_name[1:]), # not using ID. but might be good to have? currently assume unique names so dont need IDs.
                 qmemory = QuantumMemory(name=f"{node_name}-qmem", num_positions=qubit_capacity, memory_noise_models=self._gen_q_mem_model()),
-                # node_entity = NodeEntity(node_name), # TODO: update?
             )
             this_node.entity = NodeEntity(node_name, this_node)
             yield this_node

@@ -5,7 +5,8 @@ from _enums import *
 
 class Defaults: # The default values to use as arguments
     seed = 1 # same seed is used wherever there is a possibility to use a seed
-    network_toplogy = NET_TOPOLOGY.SURFNET
+    network_toplogy = NET_TOPOLOGY.GRID_2D
+    grid_dim = 4
     algorithm = ALGS.SLMPG
     num_ts = 5
     ts_length = 10000

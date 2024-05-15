@@ -9,31 +9,25 @@ data_directory_path = f'{os.path.dirname(os.path.realpath(__file__))}/networks-d
 default_length = globals.args.length
 default_width = globals.args.width
 
-def _slmp_grid_4x4(length=default_length, width=default_width):
-    l = length
-    w = width
-    return nx.Graph({   
-                    'n1': {'n2':{'length':l, 'width':w,}, 'n5':{'length':l, 'width':w,}},
-                    'n2': {'n3':{'length':l, 'width':w,}, 'n6':{'length':l, 'width':w,}},
-                    'n3': {'n7':{'length':l, 'width':w,}, 'n4':{'length':l, 'width':w,}},
-                    'n4': {'n8':{'length':l, 'width':w,}},
+def _grid_2d(dim=globals.args.grid_dim):
+    l = default_length
+    w = default_width if default_width > 0 else 1
+    
+    G = nx.grid_2d_graph(dim, dim)
 
-                    'n5': {'n6':{'length':l, 'width':w,}, 'n9':{'length':l, 'width':w,}},
-                    'n6': {'n7':{'length':l, 'width':w,}, 'n10':{'length':l, 'width':w,}},
-                    'n7': {'n8':{'length':l, 'width':w,}, 'n11':{'length':l, 'width':w,}},
-                    'n8': {'n12':{'length':l, 'width':w,}},
+    # set lengths and widths of the edges:
+    for e in G.edges(data=True):
+        # dicts are mutable to this will reflect in the graph object too:
+        e[2]['length'] = l
+        e[2]['width'] = w
 
-                    'n9': {'n10':{'length':l, 'width':w,}, 'n13':{'length':l, 'width':w,}},
-                    'n10': {'n11':{'length':l, 'width':w,}, 'n14':{'length':l, 'width':w,}},
-                    'n11': {'n12':{'length':l, 'width':w,}, 'n15':{'length':l, 'width':w,}},
-                    'n12': {'n16':{'length':l, 'width':w,}},
+    # nx.grid_2d_graph creates node labels as tuples which causes type issues later on. so convert the label (tuple) into a string:
+    map = {}
+    for n in G.nodes:
+        map[n] = str(n)
+    G = nx.relabel_nodes(G, map)
 
-                    'n13': {'n14':{'length':l, 'width':w,}},
-                    'n14': {'n15':{'length':l, 'width':w,}},
-                    'n15': {'n16':{'length':l, 'width':w,}},
-                    'n16': {}, 
-                }
-        )
+    return G
 
 def _teaver_graph_common(data_directory=data_directory_path): # make_undirected is true by default. if this is true then the these teaver graphs (which are directed) are converted to undirected graphs. Directed graphs will definitely cause issues without significant changes
     # "topology.txt A list of rows containing edges with a source, destination, capacity, and probability of failure."
@@ -53,10 +47,12 @@ def _teaver_graph_common(data_directory=data_directory_path): # make_undirected 
     for node in nodes_data[1:]:
         G.add_node(node)
     
+    w = default_width if default_width > 0 else 1
+
     for edge in edges_data[1:]:
         to_node = 's' + edge[0]
         from_node = 's' + edge[1]
-        G.add_edge(from_node, to_node, capacity=edge[2], prob_failure=edge[3], length=default_length, width=default_width) # added length and width for each edge. others are from the data file
+        G.add_edge(from_node, to_node, capacity=edge[2], prob_failure=edge[3], length=default_length, width=w) # added length and width for each edge. others are from the data file
     
     return G
 
@@ -97,7 +93,8 @@ def _abilene(): # make_undirected is true by default. if this is true then the t
         length = latitude_longitude_distance(src_lat, dst_lat, src_lon, dst_lon) # calculating length of edge using the nodes' latitute and longitude
         if length == 0:
             length = 0.1 # sometimes src and dst are at the same lat/long. in those cases still add a small length so its not 0 (TODO: does it make sense to have length 0? if so leave as 0)
-        abilene.add_edge(src_node, dst_node, capacity=capacity_kbps, ospf_weight=ospf_weight, length=length, width=default_width) # added length and width for each edge. others are from the data file
+        w = default_width if default_width > 0 else 1
+        abilene.add_edge(src_node, dst_node, capacity=capacity_kbps, ospf_weight=ospf_weight, length=length, width=w) # added length and width for each edge. others are from the data file
 
     return abilene
 
@@ -122,6 +119,8 @@ def _surfnet(): # make_undirected is true by default. if this is true then this 
             length = 0.1 # sometimes src and dst are at the same lat/long. in those cases still add a small length so its not 0 (TODO: does it make sense to have length 0? if so leave as 0)
 
         e[2]['length'] = length # dicts are mutable to this will reflect in the graph object too
+        w = default_width if default_width > 0 else 1
+        e[2]['width'] = w
 
     return surfnet
 
@@ -178,8 +177,8 @@ def network_choice():
     top = globals.NET_TOPOLOGY
     nx_graph = None
     
-    if network_choice is top.SLMP_GRID_4x4:
-        nx_graph = _slmp_grid_4x4()
+    if network_choice is top.GRID_2D:
+        nx_graph = _grid_2d()
     elif network_choice is top.ATT:
         nx_graph = _att()
     elif network_choice is top.IBM:

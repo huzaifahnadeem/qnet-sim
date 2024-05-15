@@ -37,7 +37,7 @@ class ALGS(Enum):
     SLMPL = 'SLMPl'
 
 class NET_TOPOLOGY(Enum):
-    SLMP_GRID_4x4 = 'slmp_grid_4x4'
+    GRID_2D = 'grid_2d'
     ATT = 'att'
     IBM = 'ibm'
     ABILENE = 'abilene'
