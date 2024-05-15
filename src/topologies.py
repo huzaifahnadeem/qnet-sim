@@ -9,6 +9,8 @@ data_directory_path = f'{os.path.dirname(os.path.realpath(__file__))}/networks-d
 default_length = globals.args.length
 default_width = globals.args.width
 
+# TODO: https://networkx.org/documentation/stable/reference/generators.html has a lot of possible topologies. might be nice to add some of them.
+
 def _grid_2d(dim=globals.args.grid_dim):
     l = default_length
     w = default_width if default_width > 0 else 1
@@ -29,7 +31,7 @@ def _grid_2d(dim=globals.args.grid_dim):
 
     return G
 
-def _teaver_graph_common(data_directory=data_directory_path): # make_undirected is true by default. if this is true then the these teaver graphs (which are directed) are converted to undirected graphs. Directed graphs will definitely cause issues without significant changes
+def _teaver_graph_common(data_directory=data_directory_path):
     # "topology.txt A list of rows containing edges with a source, destination, capacity, and probability of failure."
     
     nodes_file = data_directory + "/nodes.txt"

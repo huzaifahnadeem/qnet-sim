@@ -1,6 +1,0 @@
-ts,src,dst,path_used,qubit_teleported,x-hop,y-hop
-1.0,n13,n14,['n13', 'n14'],1,1,0
-2.0,n2,n9,None,0,1,2
-3.0,n16,n13,None,0,3,0
-4.0,n10,n16,None,0,2,1
-5.0,n12,n7,None,0,1,1
