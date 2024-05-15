@@ -26,7 +26,7 @@ class Defaults: # The default values to use as arguments
 
     qc_noise_model = QCHANNEL_NOISE_MODEL.none
     qc_noise_rate = 0.0
-    qc_noise_time_independent = True
+    qc_noise_is_time_independent = True
     qc_noise_t1 = 0
     qc_noise_t2 = 0
 
@@ -39,13 +39,14 @@ class Defaults: # The default values to use as arguments
     qc_delay_fixed = 0 # only used for fixed delay model
     qc_delay_mean = 0 # only used for gaussian delay model
     qc_delay_std = 0 # only used for gaussian delay model
+    qc_delay_photon_speed = 200000 # in km/s. 200000 km/s is the default set by netsquid
 
     # delay model params for classical channels
-    # Need to be careful about the delays since if it is too much then the node will assume that it didnt get it. (TODO: parameterize this timeout)
     cc_delay_model = CHANNEL_DELAY_MODEL.none # using fixed model by default with delay = 1 ms. QPASS paper says that classical communications in such networks take around ~1 ms so using this value.
     cc_delay_fixed = 0 # only used for fixed delay model
     cc_delay_mean = 0 # only used for gaussian delay model
     cc_delay_std = 0 # only used for gaussian delay model
+    cc_delay_photon_speed = 200000 # in km/s. 200000 km/s is the default set by netsquid
 
     prob_swap_loss = 0 # the 'q' param
 

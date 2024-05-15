@@ -248,7 +248,7 @@ class Network(ns_Network):
             if globals.args.qc_delay_model is DELAY_MODELS.none:
                 q_channel_model[key_delay_model] = None
             elif globals.args.qc_delay_model is DELAY_MODELS.fibre:
-                q_channel_model[key_delay_model] = ns.components.models.delaymodels.FibreDelayModel()
+                q_channel_model[key_delay_model] = ns.components.models.delaymodels.FibreDelayModel(c=globals.args.qc_delay_photon_speed)
             elif globals.args.qc_delay_model is DELAY_MODELS.fixed:
                 q_channel_model[key_delay_model] = ns.components.models.delaymodels.FixedDelayModel(delay=globals.args.qc_delay_fixed)
             elif globals.args.qc_delay_model is DELAY_MODELS.gaussian:
@@ -269,7 +269,7 @@ class Network(ns_Network):
         if globals.args.cc_delay_model is DELAY_MODELS.none:
             c_channel_model[key_delay_model] = None
         elif globals.args.cc_delay_model is DELAY_MODELS.fibre:
-            c_channel_model[key_delay_model] = ns.components.models.delaymodels.FibreDelayModel()
+            c_channel_model[key_delay_model] = ns.components.models.delaymodels.FibreDelayModel(c=globals.args.cc_delay_photon_speed)
         elif globals.args.cc_delay_model is DELAY_MODELS.fixed:
             c_channel_model[key_delay_model] = ns.components.models.delaymodels.FixedDelayModel(delay = globals.args.cc_delay_fixed * ms_to_ns_factor)
         elif globals.args.cc_delay_model is DELAY_MODELS.gaussian:
