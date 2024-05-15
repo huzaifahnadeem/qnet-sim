@@ -103,10 +103,27 @@ def _abilene(): # make_undirected is true by default. if this is true then the t
 
 def _surfnet(): # make_undirected is true by default. if this is true then this multigraph is converted to an undirected graph. Directed graphs will definitely cause issues without significant changes):):
     ### SURFnet
-    # SURFnet = nx.read_gml(f'{data_directory_path}/SURFnet/Surfnet.gml') # this is not working for some reason
-    surfnet = nx.read_graphml(f'{data_directory_path}/SURFnet/Surfnet.graphml') # but the data also has this other file type and this works
-    
-    return surfnet # TODO: not working properly. check later
+    from utils import latitude_longitude_distance
+
+    # both gml and graphml are working but graphml seems to provide a slightly easier to read graph (e.g. it has both labels and ids for nodes but in gml only labels are used as ids, etc)
+    # surfnet = nx.read_gml(f'{data_directory_path}/SURFnet/Surfnet.gml')
+    surfnet = nx.read_graphml(f'{data_directory_path}/SURFnet/Surfnet.graphml')
+
+    # calculate and add lengths of edges based on the latitudes and the longitudes of the nodes
+    for e in surfnet.edges(data=True):
+        u = e[0]
+        v = e[1]
+        u_lat = surfnet.nodes[u]['Latitude']
+        u_lon = surfnet.nodes[u]['Longitude']
+        v_lat = surfnet.nodes[v]['Latitude']
+        v_lon = surfnet.nodes[v]['Longitude']
+        length = latitude_longitude_distance(u_lat, v_lat, u_lon, v_lon) # calculating length of edge using the nodes' latitute and longitude
+        if length == 0:
+            length = 0.1 # sometimes src and dst are at the same lat/long. in those cases still add a small length so its not 0 (TODO: does it make sense to have length 0? if so leave as 0)
+
+        e[2]['length'] = length # dicts are mutable to this will reflect in the graph object too
+
+    return surfnet
 
 def _erdos_renyi_50_01():
     ### Erdos Renyi G(50, 0.1)
@@ -144,7 +161,7 @@ def standardize_graph(graph):
             for _ in range(w):
                 graph_f.add_edges_from([e])
     elif type(graph) is nx.MultiGraph:  # if it is a multigraph
-        edges = [e for e in graph.edges.data()]
+        edges = sorted(graph.edges(data=True), key=lambda edge: edge[2].get('length', None)) # doing this so that edges (of diff lengths) between the same u-v nodes are grouped together. might be useful to have this later.
         graph_f.add_edges_from(edges)
         added_already = []
         for e in edges:
