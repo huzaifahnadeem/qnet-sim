@@ -23,35 +23,30 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
         with open(file_name) as conf_file:
             utils.parse_json_config(config, json.loads(conf_file.read())) # the util function overwrites all the variables in the config object and leaves the rest as they are
 
+    # args for results:
     parser.add_argument('--results_dir', required=False, default=config.results_dir, type=str, help=f'The result file will be saved into this directory. The filename is specified by the --results_file parameter. Default set to {config.results_dir}')
     parser.add_argument('--results_file', required=False, default='', type=str, help=f'The results of the experiment will be saved into this file with this name in the directory specified by the --results_dir parameter. If this param is not used then a file with a unique name is created and saved into the aforementioned directory.')
     parser.add_argument('--seed', required=False, default=config.seed, type=int, help=f'The integer to use as the seed value for the netsquid and random libraries. Default set to {config.seed}.')
-    parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumInParamAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
-    parser.add_argument('--grid_dim', required=False, default=config.grid_dim, type=int, help=f'The dimension of the grid topology if using --network=grid_2d. Default set to {config.grid_dim}')
-    parser.add_argument('--alg', required=False, default=config.algorithm, type=globals.ALGS, action=globals.EnumInParamAction, help=f'Choice between SLMPg, SLMPl, QPASS, and QCAST. Default set to {config.algorithm}.')
+    
+    # args for sim set up:
     parser.add_argument('--num_ts', required=False, default=config.num_ts, type=int, help=f'The total number of timeslots to run for. Default set to {config.num_ts}')
     parser.add_argument('--ts_length', required=False, default=config.ts_length, type=int, help=f'How long each timeslot is in terms of simulation instants. Default set to {config.ts_length}')
-    parser.add_argument('--yen_n', required=False, default=config.yen_n, type=int, help=f'The starting number of offline paths to compute with yen\'s algorithm. Default set to {config.yen_n}.')
-    parser.add_argument('--yen_metric', required=False, default=config.yen_metric, type=globals.YEN_METRICS, action=globals.EnumInParamAction, help=f'The metric to use to compute path length in yen\'s algorithm. Default set to "{config.yen_metric.value}".')
-    parser.add_argument('--p3_hop', required=False, default=config.p3_hop, type=int, help=f'In phase 3 exchange link state to this many hop away neighbours. A value of -1 is used to mean infinity. Default set to {config.p3_hop}.')
-    parser.add_argument('--max_sd', required=False, default=config.max_sd_pairs_per_ts, type=int, help=f'Max number of S-D pairs in each timeslot (inclusive). Default set to {config.max_sd_pairs_per_ts}.')
-    parser.add_argument('--min_sd', required=False, default=config.min_sd_pairs_per_ts, type=int, help=f'Min number of S-D pairs in each timeslot (inclusive). Default set to {config.min_sd_pairs_per_ts}.')
-    parser.add_argument('--single_entanglement_flow_mode', required=False, action='store_true', help=f'If this argument used then there is only a single unique s-d pair per timeslot (e.g. to use with single entanglement flow in SLMP). The number of qubits to be sent between src and dst is dependent on the --max_sd and --min_sd arguments.')
-    parser.add_argument('--not_single_entanglement_flow_mode', dest='--single_entanglement_flow_mode', action='store_false', help=f'Use this if you dont want to toggle --single_entanglement_flow_mode')
-    parser.set_defaults(single_entanglement_flow_mode=config.single_entanglement_flow_mode)
-    parser.add_argument('--src_set', required=False, default=config.src_set, type=str, nargs='*', help=f'Source nodes would be selected randomly from this set. Usage: "... --src_set node1 node2 node3". Leaving empty means all nodes can be used. If --single_entanglement_flow_mode is selected then the first node is selected in the first timeslot and the next one in second and so on. If there are fewer nodes than the number of timeslots then starts over from the first node when it reaches the end of list. If the source and destination are the same node then the next destination in the list is used. Default set to {config.src_set}.')
-    parser.add_argument('--dst_set', required=False, default=config.dst_set, type=str, nargs='*', help=f'Destination nodes would be selected randomly from this set. Usage: "... --dst_set node1 node2 node3". Leaving empty means all nodes can be used. If --single_entanglement_flow_mode is selected then the first node is selected in the first timeslot and the next one in second and so on. If there are fewer nodes than the number of timeslots then starts over from the first node when it reaches the end of list. If the source and destination are the same node then the next destination in the list is used. Default set to {config.src_set}.')
     parser.add_argument('--p2_nc', required=False, default=config.p2_nc, type=int, help=f'During P2, each channel can make a number nc of attempts, nc >= 1, until a link is built of timeout. Default set to {config.p2_nc}.')
     parser.add_argument('--two_sided_epr', required=False, default=config.two_sided_epr, type=bool, help=f'If True, both nodes of an edge attempt to establish entanglement. If both sides\' ebit gets across the channel successfully then ebit from the node with the larger ID is used. If False, only the node with the larger ID sends the ebit. Default set to {config.two_sided_epr}.')
     parser.add_argument('--link_establish_timeout', required=False, default=config.link_establish_timeout, type=int, help=f'During establishment of links in phase 2, what time interval to use for timeouts (i.e. if havent received the ebit by time timeout then consider it lost). Default set to {config.link_establish_timeout}.')
-    parser.add_argument('--length', required=False, default=config.length, type=int, help=f'Used for any edge that does not have its length specified. Unit = km. Default set to {config.length} km.')
-    parser.add_argument('--width', required=False, default=config.width, type=int, help=f'Used for any edge that does not have its width specified. Default set to {config.width}.')
-    # connections models related:
+
+    # args for traffic matrix:
+    parser.add_argument('--max_sd', required=False, default=config.max_sd_pairs_per_ts, type=int, help=f'Max number of S-D pairs in each timeslot (inclusive). Default set to {config.max_sd_pairs_per_ts}.')
+    parser.add_argument('--min_sd', required=False, default=config.min_sd_pairs_per_ts, type=int, help=f'Min number of S-D pairs in each timeslot (inclusive). Default set to {config.min_sd_pairs_per_ts}.')
+    parser.add_argument('--src_set', required=False, default=config.src_set, type=str, nargs='*', help=f'Source nodes would be selected randomly from this set. Usage: "... --src_set node1 node2 node3". Leaving empty means all nodes can be used. If --single_entanglement_flow_mode is selected then the first node is selected in the first timeslot and the next one in second and so on. If there are fewer nodes than the number of timeslots then starts over from the first node when it reaches the end of list. If the source and destination are the same node then the next destination in the list is used. Default set to {config.src_set}.')
+    parser.add_argument('--dst_set', required=False, default=config.dst_set, type=str, nargs='*', help=f'Destination nodes would be selected randomly from this set. Usage: "... --dst_set node1 node2 node3". Leaving empty means all nodes can be used. If --single_entanglement_flow_mode is selected then the first node is selected in the first timeslot and the next one in second and so on. If there are fewer nodes than the number of timeslots then starts over from the first node when it reaches the end of list. If the source and destination are the same node then the next destination in the list is used. Default set to {config.src_set}.')
+    
+    
+    # args for connections models:
     parser.add_argument('--qc_noise_model', required=False, default=config.qc_noise_model, type=globals.QCHANNEL_NOISE_MODEL, action=globals.EnumInParamAction, help=f'This is the noise model to use for quantum channels. Options: {[x.name for x in globals.QCHANNEL_NOISE_MODEL]}')
     parser.add_argument('--qc_noise_rate', required=False, default=config.qc_noise_rate, type=float, help=f'The parameter (rate) to be used with dephase and depolar noise models.')
     parser.add_argument('--qc_noise_t1', required=False, default=config.qc_noise_t1, type=float, help=f'The "T1" parameter for the T1T2 noise model')
     parser.add_argument('--qc_noise_t2', required=False, default=config.qc_noise_t2, type=float, help=f'The "T2" parameter for the T1T2 noise model')
-    # adding pair of args for whether noise model is time independent or not. If it is independent then noise_param is probability. If not, then it is the in Hz.
     parser.add_argument('--qc_noise_time_independent', required=False, action='store_true', help=f'If this argument used then the --qc_noise_model is time independent and --qc_noise_rate is the probability to be used with the model.')
     parser.add_argument('--qc_noise_time_dependent', dest='--qc_noise_time_independent', action='store_false', help=f'If this argument used then the --qc_noise_model is time dependent and --qc_noise_rate, in Hz, is to be used with the model.')
     parser.set_defaults(qc_noise_time_independent=config.qc_noise_is_time_independent)
@@ -70,13 +65,37 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--cc_delay_mean', required=False, default=config.cc_delay_mean, type=float, help=f'The mean delay in micro seconds to use with channels. Only used with --cc_delay_model=gaussian')
     parser.add_argument('--cc_delay_std', required=False, default=config.cc_delay_std, type=float, help=f'The standard deviation for delay in micro seconds to use with channels. Only used with --cc_delay_model=gaussian')
     parser.add_argument('--cc_delay_photon_speed', required=False, default=config.cc_delay_photon_speed, type=float, help=f'The speed of photons (in km/s) travelling through the channel. Only used with --cc_delay_model=fibre.')
-    parser.add_argument('--prob_swap_loss', required=False, default=config.prob_swap_loss, type=float, help=f'The probability that a pair of qubits would be lost when a swap operation is performed. Its the \'q\' parameter.') # TODO: couldnt find a way through netsquid. currently going with randomly generating a number and checking against this param when swapping
+    
+    # args for qmem models:
     parser.add_argument('--qm_noise_model', required=False, default=config.qm_noise_model, type=globals.QMEM_NOISE_MODEL, action=globals.EnumInParamAction, help=f'This is the noise model to use for quantum memories. Options: {[x.name for x in globals.QMEM_NOISE_MODEL]}')
     parser.add_argument('--qm_noise_rate', required=False, default=config.qm_noise_rate, type=float, help=f'')
     parser.add_argument('--qm_noise_time_independent', required=False, action='store_true', help=f'If this argument used then the --qm_noise_model is time independent and --qm_noise_rate is the probability to be used with the model.')
     parser.add_argument('--qm_noise_time_dependent', dest='--qm_noise_time_independent', action='store_false', help=f'If this argument used then the --qm_noise_model is time dependent and --qm_noise_rate, in Hz, is to be used with the model.')
     parser.set_defaults(qm_noise_time_independent=config.qm_noise_time_independent)
+
+    # args for network set up:
+    parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumInParamAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
+    parser.add_argument('--grid_dim', required=False, default=config.grid_dim, type=int, help=f'The dimension of the grid topology if using --network=grid_2d. Default set to {config.grid_dim}')
+    parser.add_argument('--length', required=False, default=config.length, type=int, help=f'Used for any edge that does not have its length specified. Unit = km. Default set to {config.length} km.')
+    parser.add_argument('--width', required=False, default=config.width, type=int, help=f'Used for any edge that does not have its width specified. Default set to {config.width}.')
+
+    # args specific to SLMP:
+    parser.add_argument('--single_entanglement_flow_mode', required=False, action='store_true',  help=f'If this argument used then there is only a single unique s-d pair per timeslot (e.g. to use with single entanglement flow in SLMP). The number of qubits to be sent between src and dst is dependent on the --max_sd and --min_sd arguments.')
+    parser.add_argument('--not_single_entanglement_flow_mode', dest='--single_entanglement_flow_mode', action='store_false', help=f'Use this if you dont want to toggle --single_entanglement_flow_mode')
+    parser.set_defaults(single_entanglement_flow_mode=config.single_entanglement_flow_mode)
     
+    # args specific to QPASS:
+    parser.add_argument('--yen_n', required=False, default=config.yen_n, type=int, help=f'The starting number of offline paths to compute with yen\'s algorithm. Default set to {config.yen_n}.')
+    parser.add_argument('--yen_metric', required=False, default=config.yen_metric, type=globals.YEN_METRICS, action=globals.EnumInParamAction, help=f'The metric to use to compute path length in yen\'s algorithm. Default set to "{config.yen_metric.value}".')
+    parser.add_argument('--p3_hop', required=False, default=config.p3_hop, type=int, help=f'In phase 3 exchange link state to this many hop away neighbours. A value of -1 is used to mean infinity. Default set to {config.p3_hop}.')
+
+    # misc. args:
+    parser.add_argument('--alg', required=False, default=config.algorithm, type=globals.ALGS, action=globals.EnumInParamAction, help=f'Choice between SLMPg, SLMPl, QPASS, and QCAST. Default set to {config.algorithm}.')
+    parser.add_argument('--prob_swap_loss', required=False, default=config.prob_swap_loss, type=float, help=f'The probability that a pair of qubits would be lost when a swap operation is performed. Its the \'q\' parameter.') # TODO: eventually this will be removes and instead a noise model will be added to the PhysicalInstruction objects for the swap operation
+    parser.add_argument('--use_quantinf_data_state', required=False, action='store_true', help=f'If this argument used then the randPsi function from the quantinf library is used to randomly generate each data qubit\'s state.')
+    parser.add_argument('--dont_use_quantinf_data_state', dest='--use_quantinf_data_state', action='store_false', help=f'If this argument used then instead of using the randPsi function from the quantinf library, each data qubit\'s state is generated by applying a randomly generated rotation operator (random angle between [0, 2pi] radians, a random rotation axis, and randomly deciding whether or not to complex conjugate the operator) on a state randomly selected from: |−⟩, |+⟩, |1Y⟩, |0Y⟩, |1⟩, |0⟩.')
+    parser.set_defaults(use_quantinf_data_state=config.use_quantinf_data_state)
+
     globals.args = parser.parse_args()
 
     if help_case:

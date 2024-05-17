@@ -60,3 +60,5 @@ class Defaults: # The default values to use as arguments
     qm_noise_model = QMEM_NOISE_MODEL.none
     qm_noise_rate = 0
     qm_noise_time_independent = True
+
+    use_quantinf_data_state = False
