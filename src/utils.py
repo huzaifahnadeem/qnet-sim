@@ -63,5 +63,22 @@ def slmpg_find_paths(links_graph, sd_pairs): # TODO: i think this is quite ineff
         return paths
 
 def parse_json_config(config, data):
-    for var in data.keys():
-        setattr(config, var, data[var])
+    for var_str in data.keys():
+        if f"{var_str[0]}{var_str[1]}" == '--':
+            var = var_str[2:]
+        else:
+            var = var_str
+            
+        setattr(config, var, data[var_str])
+
+def _grid_dist(u, v, dir_ind):
+    u = u[1:-1].split(',')
+    v = v[1:-1].split(',')
+
+    return abs(int(u[dir_ind]) - int(v[dir_ind]))
+
+def grid_x_dist(u, v):
+    return _grid_dist(u, v, 0) # node name's tuple = (x, y). x = idx 0, y = idx 1
+
+def grid_y_dist(u, v):
+    return _grid_dist(u, v, 1) # node name's tuple = (x, y). x = idx 0, y = idx 1

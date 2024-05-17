@@ -23,7 +23,8 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
         with open(file_name) as conf_file:
             utils.parse_json_config(config, json.loads(conf_file.read())) # the util function overwrites all the variables in the config object and leaves the rest as they are
 
-    # rest of the arguments.
+    parser.add_argument('--results_dir', required=False, default=config.results_dir, type=str, help=f'The result file will be saved into this directory. The filename is specified by the --results_file parameter. Default set to {config.results_dir}')
+    parser.add_argument('--results_file', required=False, default='', type=str, help=f'The results of the experiment will be saved into this file with this name in the directory specified by the --results_dir parameter. If this param is not used then a file with a unique name is created and saved into the aforementioned directory.')
     parser.add_argument('--seed', required=False, default=config.seed, type=int, help=f'The integer to use as the seed value for the netsquid and random libraries. Default set to {config.seed}.')
     parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumInParamAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
     parser.add_argument('--grid_dim', required=False, default=config.grid_dim, type=int, help=f'The dimension of the grid topology if using --network=grid_2d. Default set to {config.grid_dim}')
@@ -32,7 +33,7 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--ts_length', required=False, default=config.ts_length, type=int, help=f'How long each timeslot is in terms of simulation instants. Default set to {config.ts_length}')
     parser.add_argument('--yen_n', required=False, default=config.yen_n, type=int, help=f'The starting number of offline paths to compute with yen\'s algorithm. Default set to {config.yen_n}.')
     parser.add_argument('--yen_metric', required=False, default=config.yen_metric, type=globals.YEN_METRICS, action=globals.EnumInParamAction, help=f'The metric to use to compute path length in yen\'s algorithm. Default set to "{config.yen_metric.value}".')
-    parser.add_argument('--p3_hop', required=False, default=config.p3_hop, type=int, help=f'In phase 3 exchange link state to this many hop away neighbours. Default set to {config.p3_hop}.')
+    parser.add_argument('--p3_hop', required=False, default=config.p3_hop, type=int, help=f'In phase 3 exchange link state to this many hop away neighbours. A value of -1 is used to mean infinity. Default set to {config.p3_hop}.')
     parser.add_argument('--max_sd', required=False, default=config.max_sd_pairs_per_ts, type=int, help=f'Max number of S-D pairs in each timeslot (inclusive). Default set to {config.max_sd_pairs_per_ts}.')
     parser.add_argument('--min_sd', required=False, default=config.min_sd_pairs_per_ts, type=int, help=f'Min number of S-D pairs in each timeslot (inclusive). Default set to {config.min_sd_pairs_per_ts}.')
     parser.add_argument('--single_entanglement_flow_mode', required=False, action='store_true', help=f'If this argument used then there is only a single unique s-d pair per timeslot (e.g. to use with single entanglement flow in SLMP). The number of qubits to be sent between src and dst is dependent on the --max_sd and --min_sd arguments.')
@@ -95,10 +96,13 @@ def args_range_check(): # TODO: https://gist.github.com/dmitriykovalev/2ab1aa33a
         sign = '>='
         limit = '1'
     elif globals.args.p3_hop < 1:
-        raise_exception = True
-        param = '--p3_hop'
-        sign = '>='
-        limit = '1'
+        if globals.args.p3_hop == -1: # a special case. => infinity
+            globals.args.p3_hop = float('inf')
+        else:
+            raise_exception = True
+            param = '--p3_hop'
+            sign = '>='
+            limit = '1'
     elif globals.args.min_sd < 0:
         raise_exception = True
         param = '--min_sd'

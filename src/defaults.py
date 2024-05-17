@@ -1,9 +1,12 @@
 
 from _enums import *
+import os
 
 # TODO: maybe have categories (as subclasses) for the variables?
 
 class Defaults: # The default values to use as arguments
+    results_dir = f'{os.path.dirname(os.path.realpath(__file__))}/experiments-results/'
+
     seed = 1 # same seed is used wherever there is a possibility to use a seed
     network_toplogy = NET_TOPOLOGY.GRID_2D
     grid_dim = 4
