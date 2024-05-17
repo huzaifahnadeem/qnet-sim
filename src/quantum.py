@@ -2,8 +2,20 @@ import netsquid as ns
 import random
 from numpy import pi
 import math
+import globals
+from oct2py import octave # allows calling octave/matlab functions in python (octave needs to be installed in the system to use)
+import os
 
-# possible states that the data qubit can start in (will apply some combination of gates later)
+# need to install octave and oct2py first.
+# oct2py: https://pypi.org/project/oct2py/
+# octave: https://wiki.octave.org/Octave_for_GNU/Linux
+# only need to use octave if we want to use the quantinf package (./lib/quantinf/) from https://www.dr-qubit.org/matlab.html
+
+# Note: there maybe be an issue with oct2py/io.py file line 376. it does not import spmatrix from scipy but adding "from scipy.sparse import spmatrix" before this line or at the top of file fixes the issue
+lib_path = f'{os.path.dirname(os.path.realpath(__file__))}/lib/quantinf/'
+octave.addpath(lib_path)
+
+# possible states that the data qubit can start in (will apply some combination of gates later) (if --dont_use_quantinf_data_state selected)
 ket_minus = ns.h1   # ns.h1 = |−⟩  = 1/√(2)*(|0⟩ − |1⟩)
 ket_plus = ns.h0    # ns.h0 = |+⟩  = 1/√(2)*(|0⟩ + |1⟩)
 ket_1_y = ns.y1     # ns.y0 = |1𝑌⟩ = 1/√(2)*(|0⟩ - 𝑖|1⟩)
@@ -56,24 +68,38 @@ def apply_corrections(ebit, corrections, original_state_idx=None):
     return ebit, fidelity # ebit has the teleported qubit's state now
 
 def _generate_data_qubit(state_idx):
-    start_state, operator = data_qubit_states[state_idx]
-    data_qubit,  = ns.qubits.create_qubits(1, no_state=True)
-    ns.qubits.assign_qstate([data_qubit], starting_states[start_state]) # assign starting state
-    ns.qubits.operate(data_qubit, operator) # apply the operator
+    if not globals.args.use_quantinf_data_state: # the old way:
+        start_state, operator = data_qubit_states[state_idx]
+        data_qubit,  = ns.qubits.create_qubits(1, no_state=True)
+        ns.qubits.assign_qstate([data_qubit], starting_states[start_state]) # assign starting state
+        ns.qubits.operate(data_qubit, operator) # apply the operator
+    else:
+        # using quantinf random function to generate the random state for the data qubit
+        state = data_qubit_states[state_idx]
+        data_qubit,  = ns.qubits.create_qubits(1, no_state=True)
+        ns.qubits.assign_qstate([data_qubit], state)
     
     return data_qubit
 
 def _gen_random_state():
-    angle = pi * random.uniform(0.0, 2.0)
-    rot_axis = random.choice([(1, 0, 0), (0, 1, 0), (0, 0, 1)]) # unit vectors representing x, y, and z axes, respectively.
-    do_complex_conj = random.choice([True, False])
+    if not globals.args.use_quantinf_data_state: # do the old way:
+        angle = pi * random.uniform(0.0, 2.0)
+        rot_axis = random.choice([(1, 0, 0), (0, 1, 0), (0, 0, 1)]) # unit vectors representing x, y, and z axes, respectively.
+        do_complex_conj = random.choice([True, False])
+        
+        start_state = random.choice(list(starting_states.keys()))
+        operator = ns.qubits.operators.create_rotation_op(angle=angle, rotation_axis=rot_axis, conjugate=do_complex_conj)
+        
+        next_idx = len(data_qubit_states)
+        data_qubit_states.append((start_state, operator)) # saving the starting state and the operator. When generate_data_qubit() is called, it will generate a qubit and assign it this state and then apply the operator.
+    else:
+        # case when --use_quantinf_data_state is used
+        randstate = octave.randPsi(2)
+        next_idx = len(data_qubit_states)
+        data_qubit_states.append(randstate)
     
-    start_state = random.choice(list(starting_states.keys()))
-    operator = ns.qubits.operators.create_rotation_op(angle=angle, rotation_axis=rot_axis, conjugate=do_complex_conj)
-    
-    next_idx = len(data_qubit_states)
-    data_qubit_states.append((start_state, operator)) # saving the starting state and the operator. When generate_data_qubit() is called, it will generate a qubit and assign it this state and then apply the operator.
     return next_idx
+
 
 def new_sd_pair(sd_pair):
     global sd_pair_states
