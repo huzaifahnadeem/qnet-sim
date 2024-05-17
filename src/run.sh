@@ -56,25 +56,25 @@
 
 
 
-echo "mem depolar(0)"
-python main.py --seed=0 --alg=SLMPg \
-    --qm_noise_model=depolar --qm_noise_rate=0 --qm_noise_time_independent
+# echo "mem depolar(0)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qm_noise_model=depolar --qm_noise_rate=0 --qm_noise_time_independent
 
-echo "mem depolar(0.25)"
-python main.py --seed=0 --alg=SLMPg \
-    --qm_noise_model=depolar --qm_noise_rate=0.25 --qm_noise_time_independent
+# echo "mem depolar(0.25)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qm_noise_model=depolar --qm_noise_rate=0.25 --qm_noise_time_independent
 
-echo "mem depolar(0.5)"
-python main.py --seed=0 --alg=SLMPg \
-    --qm_noise_model=depolar --qm_noise_rate=0.5 --qm_noise_time_independent
+# echo "mem depolar(0.5)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qm_noise_model=depolar --qm_noise_rate=0.5 --qm_noise_time_independent
 
-echo "mem depolar(0.75)"
-python main.py --seed=0 --alg=SLMPg \
-    --qm_noise_model=depolar --qm_noise_rate=0.75 --qm_noise_time_independent
+# echo "mem depolar(0.75)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qm_noise_model=depolar --qm_noise_rate=0.75 --qm_noise_time_independent
 
-echo "mem depolar(1)"
-python main.py --seed=0 --alg=SLMPg \
-    --qm_noise_model=depolar --qm_noise_rate=1.0 --qm_noise_time_independent
+# echo "mem depolar(1)"
+# python main.py --seed=0 --alg=SLMPg \
+#     --qm_noise_model=depolar --qm_noise_rate=1.0 --qm_noise_time_independent
 
 
 
@@ -243,25 +243,25 @@ python main.py --seed=0 --alg=SLMPg \
 
 
 
-# echo "gaussian delay (mean, std = 10, 2.5)"
-# python main.py --seed=0 --alg=SLMPg \
-#     --qc_delay_model=gaussian --qc_delay_mean=10 --qc_delay_std=2.5
+echo "gaussian delay (mean, std = 10, 2.5)"
+python main.py --seed=0 --alg=SLMPg \
+    --qc_delay_model=gaussian --qc_delay_mean=10 --qc_delay_std=2.5
 
-# echo "gaussian delay (mean, std = 10, 2.5) diff. seed"
-# python main.py --seed=1 --alg=SLMPg \
-#     --qc_delay_model=gaussian --qc_delay_mean=10 --qc_delay_std=2.5
+echo "gaussian delay (mean, std = 10, 2.5) diff. seed"
+python main.py --seed=1 --alg=SLMPg \
+    --qc_delay_model=gaussian --qc_delay_mean=10 --qc_delay_std=2.5
 
-# echo "gaussian delay (mean, std = 1, 0.5) (should raise and error)"
-# python main.py --seed=0 --alg=SLMPg \
-#     --qc_delay_model=gaussian --qc_delay_mean=1 --qc_delay_std=0.5
+echo "gaussian delay (mean, std = 1, 0.5) (should raise and error)"
+python main.py --seed=0 --alg=SLMPg \
+    --qc_delay_model=gaussian --qc_delay_mean=1 --qc_delay_std=0.5
 
-# echo "gaussian delay (mean, std = 100, 0)"
-# python main.py --seed=0 --alg=SLMPg \
-#     --qc_delay_model=gaussian --qc_delay_mean=100 --qc_delay_std=0
+echo "gaussian delay (mean, std = 100, 0)"
+python main.py --seed=0 --alg=SLMPg \
+    --qc_delay_model=gaussian --qc_delay_mean=100 --qc_delay_std=0
 
-# echo "gaussian delay (mean, std = 100, 100) (should raise and error)"
-# python main.py --seed=0 --alg=SLMPg \
-#     --qc_delay_model=gaussian --qc_delay_mean=100 --qc_delay_std=100
+echo "gaussian delay (mean, std = 100, 100) (should raise and error)"
+python main.py --seed=0 --alg=SLMPg \
+    --qc_delay_model=gaussian --qc_delay_mean=100 --qc_delay_std=100
 
 
 

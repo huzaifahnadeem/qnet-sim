@@ -166,9 +166,10 @@ def standardize_graph(graph):
         graph_f.add_edges_from(edges)
         added_already = []
         for e in edges:
-            if e not in added_already:
+            if [e[0], e[1], e[2]['length']] not in added_already: # only add as a new edge if there is a new edge between u-v or is of a different length than previous ones.
                 graph_s.add_edges_from([e])
                 graph_s.edges[e[0]][e[1]]['width'] = 1
+                added_already.append([e[0], e[1], e[2]['length']])
             else:
                 graph_s.edges[e[0]][e[1]]['width'] += 1
 
