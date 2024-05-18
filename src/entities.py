@@ -975,7 +975,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
 
     def _new_ts(self, _):
         self.curr_ts += 1
-        print(f"time slot {self.curr_ts}")
+        # print(f"time slot {self.curr_ts}")
         self.curr_sd_pairs = self._this_ts_sd_pairs()
         utils._slmpg_paths_found_already = {}
         
@@ -987,7 +987,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
         # schedule the event for start of the next timeslot (unless currently in the last ts):
         if self.curr_ts < globals.args.num_ts:
             # TODO: first param of the following (== time slot length)
-            self._schedule_after(10000, NIS._init_new_ts_evtype) # TODO: parameterize the length of timeslot
+            self._schedule_after(globals.args.ts_length, NIS._init_new_ts_evtype) # TODO: parameterize the length of timeslot
 
     def _this_ts_sd_pairs(self):
         return self.traffic_matrix[self.curr_ts - 1] # -1 because index 0 stores sd pairs for ts=1 and so on.

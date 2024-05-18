@@ -32,14 +32,17 @@ class DataCollector:
     def save_results(self):
         filename = globals.args.results_file
         filename = f"{str(uuid.uuid4())}.json" if filename == '' else filename
+        timestamp = datetime.now().strftime("%d/%B/%Y %H:%M:%S")
         file_contents = {
-            "results_generated": datetime.now().strftime("%d/%B/%Y %H:%M:%S"),
+            "results_generated": timestamp,
             "params_used": self._args_as_dict(),
             "results": self._data_table
         }
         json_obj = json.dumps(file_contents, indent=4)
         with open(f"{self._save_dir}/{filename}", "w") as f:
             f.write(json_obj)
+
+        print(f"results saved to {self._save_dir}{filename} with timestamp {timestamp}.")
 
     def _args_as_dict(self):
         remove_list = ['help', 'config_file', 'results_dir', 'results_file']
