@@ -3,17 +3,15 @@ import random
 from numpy import pi
 import math
 import globals
-from oct2py import octave # allows calling octave/matlab functions in python (octave needs to be installed in the system to use)
-import os
+# oct2py allows calling octave/matlab functions in python (octave needs to be installed in the system to use)
+oct2py = None # placeholder variable for the reference to the library.
+octave = None  # placeholder variable for the reference to the this module. importlib is called in setup.py which sets these two variables.
 
 # need to install octave and oct2py first.
 # oct2py: https://pypi.org/project/oct2py/
 # octave: https://wiki.octave.org/Octave_for_GNU/Linux
 # only need to use octave if we want to use the quantinf package (./lib/quantinf/) from https://www.dr-qubit.org/matlab.html
-
 # Note: there maybe be an issue with oct2py/io.py file line 376. it does not import spmatrix from scipy but adding "from scipy.sparse import spmatrix" before this line or at the top of file fixes the issue
-lib_path = f'{os.path.dirname(os.path.realpath(__file__))}/lib/quantinf/'
-octave.addpath(lib_path)
 
 # possible states that the data qubit can start in (will apply some combination of gates later) (if --dont_use_quantinf_data_state selected)
 ket_minus = ns.h1   # ns.h1 = |−⟩  = 1/√(2)*(|0⟩ − |1⟩)
