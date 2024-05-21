@@ -960,6 +960,31 @@ class NIS(pydynaa.Entity): # The Network Information Server
             for s in sources:
                 while True:
                     d = random.choice(dst_set)
+                    # check for x/y dist forcing args (only works for grids):
+                    if globals.args.network is globals.NET_TOPOLOGY.GRID_2D:
+                        if globals.args.x_dist_gte >= 0: # < 0 implies dont force a specific distance.
+                            x_low = globals.args.x_dist_gte
+                        else:
+                            x_low = 0
+                        if globals.args.y_dist_gte >= 0:
+                            y_low = globals.args.x_dist_gte
+                        else:
+                            y_low = 0
+                        if globals.args.x_dist_lte >= 0:
+                            x_high = 1 + globals.args.x_dist_lte
+                        else:
+                            x_high = globals.args.grid_dim
+                        if globals.args.y_dist_gte >= 0:
+                            y_high = 1 + globals.args.x_dist_lte
+                        else:
+                            y_high = globals.args.grid_dim
+                        x_range = range(x_low, x_high)
+                        y_range = range(y_low, y_high)
+                        curr_x_dist = utils.grid_x_dist(s, d)
+                        curr_y_dist = utils.grid_y_dist(s, d)
+                        if (curr_x_dist not in x_range) or (curr_y_dist not in y_range):
+                            continue
+                        
                     if s != d:
                         sd_pair = (s, d)
                         quantum.new_sd_pair(sd_pair) # returns an index of the state. quantum file will keep track of the actual state in random_states list.

@@ -22,6 +22,10 @@ class Defaults: # The default values to use as arguments
     single_entanglement_flow_mode = True
     src_set = [] # empty list => all nodes
     dst_set = [] # empty list => all nodes
+    x_dist_gte = -1
+    x_dist_lte = -1
+    y_dist_gte = -1
+    y_dist_lte = -1
     p2_nc = 1
     two_sided_epr = True
     link_establish_timeout = 10 # arbitrary for now
