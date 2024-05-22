@@ -896,6 +896,8 @@ class NIS(pydynaa.Entity): # The Network Information Server
         self._epr_track = {}
         self.data_collector = data_collector.DataCollector()
 
+        self.init_traffic_matrix()
+
         if globals.args.alg is globals.ALGS.SLMPG:
             pass
         elif globals.args.alg is globals.ALGS.SLMPL:
@@ -916,7 +918,9 @@ class NIS(pydynaa.Entity): # The Network Information Server
     def set_traffic_matrix(self, tm):
         self.traffic_matrix = tm
 
-    def init_random_traffic_matrix(self, node_names):
+    def init_traffic_matrix(self):
+        node_names = [n for n in self.network.node_names()]
+
         # TODO: might want to look into quantum overlay paper's traffic matrix generation process and use that.
         num_of_ts = globals.args.num_ts
         max_num_sds = globals.args.max_sd

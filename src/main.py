@@ -18,7 +18,6 @@ def main() -> None:
 
     # create the network information server / controller entity:
     nis = NIS(nw)
-    nis.init_random_traffic_matrix(node_names) # also have "set_traffic_matrix" method
 
     # set the nis entity and node entites properties for the node entities:
     node_entities = []
