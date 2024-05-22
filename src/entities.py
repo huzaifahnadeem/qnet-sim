@@ -940,7 +940,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
                 if globals.args.src_set == []:
                     src_set = [random.choice(node_names)]
                 if globals.args.dst_set == []:
-                    dst_set = [random.choice(list(set(node_names) - set(src_set)))]
+                    dst_set = list(set(node_names) - set(src_set))
 
                 if (globals.args.src_set != []) and (globals.args.dst_set != []):
                     while True:
@@ -959,7 +959,6 @@ class NIS(pydynaa.Entity): # The Network Information Server
             sources = random.choices(src_set, k = num_sds)
             for s in sources:
                 while True:
-                    d = random.choice(dst_set)
                     # check for x/y dist forcing args (only works for grids):
                     if globals.args.network is globals.NET_TOPOLOGY.GRID_2D:
                         if globals.args.x_dist_gte >= 0: # < 0 implies dont force a specific distance.
@@ -980,10 +979,27 @@ class NIS(pydynaa.Entity): # The Network Information Server
                             y_high = globals.args.grid_dim
                         x_range = range(x_low, x_high)
                         y_range = range(y_low, y_high)
-                        curr_x_dist = utils.grid_x_dist(s, d)
-                        curr_y_dist = utils.grid_y_dist(s, d)
-                        if (curr_x_dist not in x_range) or (curr_y_dist not in y_range):
-                            continue
+
+                        dst_set_weights = []
+                        for d in dst_set:
+                            thisxdist = utils.grid_x_dist(s, d)
+                            thisydist = utils.grid_y_dist(s, d)
+                            if (thisxdist in x_range) and (thisydist in y_range):
+                                dst_set_weights.append(1)
+                            else:
+                                dst_set_weights.append(0)
+                    else:   
+                        dst_set_weights = [1 for _ in dst_set]
+                    
+                    if all(v == 0 for v in dst_set_weights):
+                        raise ValueError("cant generate a s-d pair with the given x/y dist parameters.")
+
+                    d = random.choices(dst_set, weights=dst_set_weights, k=1)
+
+                        # curr_x_dist = utils.grid_x_dist(s, d)
+                        # curr_y_dist = utils.grid_y_dist(s, d)
+                        # if (curr_x_dist not in x_range) or (curr_y_dist not in y_range):
+                        #     continue
                         
                     if s != d:
                         sd_pair = (s, d)
