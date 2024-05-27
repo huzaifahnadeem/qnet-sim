@@ -99,3 +99,8 @@ class QMEM_NOISE_MODEL(Enum):
 class CCHANNEL_LOSS_MODEL(Enum):
     none = 'none'
     prob = 'prob' # probabilistic
+
+class TRAFFIC_MATRIX_CHOICES(Enum):
+    random = 'random'
+    # file = 'file'
+    # tmgen_uniform = 'tmgen_uniform'

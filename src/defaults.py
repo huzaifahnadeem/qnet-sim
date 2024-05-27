@@ -7,6 +7,8 @@ import os
 class Defaults: # The default values to use as arguments
     results_dir = f'{os.path.dirname(os.path.realpath(__file__))}/experiments-results/'
 
+    traffic_matrix = TRAFFIC_MATRIX_CHOICES.random
+
     seed = 1 # same seed is used wherever there is a possibility to use a seed
     network_toplogy = NET_TOPOLOGY.GRID_2D
     grid_dim = 4
@@ -19,7 +21,7 @@ class Defaults: # The default values to use as arguments
     p3_hop = 1
     max_sd_pairs_per_ts = 10
     min_sd_pairs_per_ts = 1
-    single_entanglement_flow_mode = True
+    single_entanglement_flow_mode = False
     src_set = [] # empty list => all nodes
     dst_set = [] # empty list => all nodes
     x_dist_gte = -1

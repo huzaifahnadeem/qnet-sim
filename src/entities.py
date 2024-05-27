@@ -14,6 +14,7 @@ import quantum
 from math import sqrt
 import utils
 import data_collector
+import traffic_matrix
 
 # TODO: make new files for each alg and put functions specific to them there to make things neater. Probably a good idea to use protocol class too while we are at it
 
@@ -896,7 +897,12 @@ class NIS(pydynaa.Entity): # The Network Information Server
         self._epr_track = {}
         self.data_collector = data_collector.DataCollector()
 
-        self.init_traffic_matrix()
+        tm = None
+        if globals.args.traffic_matrix is globals.TRAFFIC_MATRIX_CHOICES.random:
+            tm = traffic_matrix.random_traffic_matrix(self.network)
+        else:
+            raise NotImplementedError("Other traffic matrix options to be implemented")
+        self.set_traffic_matrix(tm)
 
         if globals.args.alg is globals.ALGS.SLMPG:
             pass
@@ -914,106 +920,13 @@ class NIS(pydynaa.Entity): # The Network Information Server
                 entity = self, # Only events from this entity will match the filter
                 handler = pydynaa.EventHandler(self._new_ts), # The event or expression handler to be invoked when a triggered event matches the given filter.
             )
-    
+
     def set_traffic_matrix(self, tm):
+        for sds_in_ts in tm:
+            for sdpair in sds_in_ts:
+                quantum.new_sd_pair(sdpair)
+        
         self.traffic_matrix = tm
-
-    def init_traffic_matrix(self):
-        node_names = [n for n in self.network.node_names()]
-
-        # TODO: might want to look into quantum overlay paper's traffic matrix generation process and use that.
-        num_of_ts = globals.args.num_ts
-        max_num_sds = globals.args.max_sd
-        min_num_sds = globals.args.min_sd
-        
-        if not globals.args.single_entanglement_flow_mode:
-            if globals.args.src_set == []:
-                src_set = node_names
-            else:
-                src_set = globals.args.src_set
-            if globals.args.dst_set == []:
-                dst_set = node_names
-            else:
-                dst_set = globals.args.dst_set
-
-        tm = []
-        i = -1
-        j = -1
-        for _ in range(num_of_ts):
-            if globals.args.single_entanglement_flow_mode:
-                if globals.args.src_set == []:
-                    src_set = [random.choice(node_names)]
-                if globals.args.dst_set == []:
-                    dst_set = list(set(node_names) - set(src_set))
-
-                if (globals.args.src_set != []) and (globals.args.dst_set != []):
-                    while True:
-                        i = (i+1) % len(globals.args.src_set)
-                        j = (j+1) % len(globals.args.dst_set)
-                        src_set = [globals.args.src_set[i]]
-                        dst_set = [globals.args.dst_set[j]]
-                        if src_set != dst_set:
-                            break
-                        else:
-                            i -= 1
-
-            this_ts_sds = []
-            num_sds = random.randint(min_num_sds, max_num_sds)
-            
-            sources = random.choices(src_set, k = num_sds)
-            for s in sources:
-                while True:
-                    # check for x/y dist forcing args (only works for grids):
-                    if globals.args.network is globals.NET_TOPOLOGY.GRID_2D:
-                        if globals.args.x_dist_gte >= 0: # < 0 implies dont force a specific distance.
-                            x_low = globals.args.x_dist_gte
-                        else:
-                            x_low = 0
-                        if globals.args.y_dist_gte >= 0:
-                            y_low = globals.args.x_dist_gte
-                        else:
-                            y_low = 0
-                        if globals.args.x_dist_lte >= 0:
-                            x_high = 1 + globals.args.x_dist_lte
-                        else:
-                            x_high = globals.args.grid_dim
-                        if globals.args.y_dist_gte >= 0:
-                            y_high = 1 + globals.args.x_dist_lte
-                        else:
-                            y_high = globals.args.grid_dim
-                        x_range = range(x_low, x_high)
-                        y_range = range(y_low, y_high)
-
-                        dst_set_weights = []
-                        for d in dst_set:
-                            thisxdist = utils.grid_x_dist(s, d)
-                            thisydist = utils.grid_y_dist(s, d)
-                            if (thisxdist in x_range) and (thisydist in y_range):
-                                dst_set_weights.append(1)
-                            else:
-                                dst_set_weights.append(0)
-                    else:   
-                        dst_set_weights = [1 for _ in dst_set]
-                    
-                    if all(v == 0 for v in dst_set_weights):
-                        raise ValueError("cant generate a s-d pair with the given x/y dist parameters.")
-
-                    d = random.choices(dst_set, weights=dst_set_weights, k=1)
-
-                        # curr_x_dist = utils.grid_x_dist(s, d)
-                        # curr_y_dist = utils.grid_y_dist(s, d)
-                        # if (curr_x_dist not in x_range) or (curr_y_dist not in y_range):
-                        #     continue
-                        
-                    if s != d:
-                        sd_pair = (s, d)
-                        quantum.new_sd_pair(sd_pair) # returns an index of the state. quantum file will keep track of the actual state in random_states list.
-                        this_ts_sds.append(sd_pair)
-                        break
-
-            tm.append(this_ts_sds)
-        
-        self.set_traffic_matrix(tm)
 
     def start(self):
         self._schedule_now(NIS._init_new_ts_evtype)
