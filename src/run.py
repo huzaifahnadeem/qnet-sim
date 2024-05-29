@@ -4,6 +4,8 @@ import subprocess
 import os
 import multiprocessing
 
+NUM_POOL = 4
+
 # OUTPUT_DIRECTORY = "./experiments-results/"
 CMD_PREFIX = 'python main.py '
 
@@ -48,7 +50,7 @@ def main():
         this_cmd = c
         args.append((this_cmd, this_exp_name))
         
-    pool = multiprocessing.Pool(4)
+    pool = multiprocessing.Pool(NUM_POOL)
     result = pool.map(run_command, args)
     pool.terminate()
     print(result)
