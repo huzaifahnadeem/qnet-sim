@@ -7,7 +7,8 @@ import multiprocessing
 # OUTPUT_DIRECTORY = "./experiments-results/"
 CMD_PREFIX = 'python main.py '
 
-def run_command(cmd, exp_name):
+def run_command(cmds):
+    cmd, exp_name = cmds
     print(f'\nSTARTING EXP < {exp_name} > AS: " {cmd} " ... ')
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -16,6 +17,8 @@ def run_command(cmd, exp_name):
         print(result.stderr)
     except SystemExit:
         pass
+
+    return 1
 
 def main():
     # if not os.path.exists(f"./{OUTPUT_DIRECTORY}/"):
@@ -38,17 +41,17 @@ def main():
                     cmds.append(
                         CMD_PREFIX + f"--seed={str(s)} --alg=SLMPg --network=grid_2d --grid_dim=11 --prob_swap_loss={q} --qc_loss_model=fixed --qc_p_loss_init={p} --x_dist_gte={str(x)} --x_dist_lte={str(x)} --y_dist_gte={str(x)} --y_dist_lte={str(x)}"
                     )
-    
-    procs = []
+
+    args = []
     for idx, c in enumerate(cmds):
         this_exp_name = cmds_name[idx]
         this_cmd = c
-        this_proc = multiprocessing.Process(target=run_command, args=[this_cmd, this_exp_name], name=this_exp_name)
-        procs.append(this_proc)
-    for p in procs:
-        p.start()
-    for p in procs:
-        p.join()
+        args.append((this_cmd, this_exp_name))
+        
+    pool = multiprocessing.Pool(4)
+    result = pool.map(run_command, args)
+    pool.terminate()
+    print(result)
 
 if __name__ == '__main__':
     multiprocessing.set_start_method('spawn')
