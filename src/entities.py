@@ -482,10 +482,6 @@ class NodeEntity(pydynaa.Entity):
                 sd_pairs = self.sd_pairs
                 # print(f"sd pairs: {sd_pairs}")
                 paths = utils.slmpg_find_paths(links_graph, sd_pairs)
-                
-                # for testing:
-                # paths = [['n10', 'n6', 'n2', 'n3'], ['n10', 'n11', 'n7', 'n3'], ['n10', 'n9', 'n5', 'n6', 'n7', 'n8', 'n4', 'n3']] # getting diff orders so fixed for now
-                
                 role_for_path = self._role(paths)
                 ROLES = globals.ROLES
                 for i in range(len(paths)):
@@ -900,7 +896,6 @@ class NIS(pydynaa.Entity): # The Network Information Server
         tm = None
         if globals.args.traffic_matrix is globals.TRAFFIC_MATRIX_CHOICES.random:
             tm = traffic_matrix.random_traffic_matrix(self.network)
-            # tm = traffic_matrix.old_init_random_traffic_matrix(self.network)
         else:
             raise NotImplementedError("Other traffic matrix options to be implemented")
         self.set_traffic_matrix(tm)

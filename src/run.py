@@ -25,10 +25,10 @@ def main():
     cmds_name = []
 
     # SLMP experiments repeat:
-    seeds = range(0, 1) # 0)
-    qs = ['0'] #, '0.1', '0.5']
-    ps = ['0.4'] #, '0.55', '0.7']
-    x_dists = range(0, 1) #1)
+    seeds = range(0, 3)
+    qs = ['0', '0.1', '0.5']
+    ps = ['0.4', '0.55', '0.7']
+    x_dists = range(0, 11)
 
     for x in x_dists:
         for p in ps:
@@ -36,7 +36,7 @@ def main():
                 for s in seeds:
                     cmds_name.append(f'seed={str(s)}, p={p}, q={q}')
                     cmds.append(
-                        CMD_PREFIX + f"--seed={str(s)} --alg=SLMPg --network=grid_2d --grid_dim=10 --prob_swap_loss={q} --qc_loss_model=fixed --qc_p_loss_init={p} --x_dist_gte={x} --x_dist_lte={x}"
+                        CMD_PREFIX + f"--seed={str(s)} --alg=SLMPg --network=grid_2d --grid_dim=11 --prob_swap_loss={q} --qc_loss_model=fixed --qc_p_loss_init={p} --x_dist_gte={str(x)} --x_dist_lte={str(x)} --y_dist_gte={str(x)} --y_dist_lte={str(x)}"
                     )
     
     procs = []
