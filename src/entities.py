@@ -900,6 +900,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
         tm = None
         if globals.args.traffic_matrix is globals.TRAFFIC_MATRIX_CHOICES.random:
             tm = traffic_matrix.random_traffic_matrix(self.network)
+            # tm = traffic_matrix.old_init_random_traffic_matrix(self.network)
         else:
             raise NotImplementedError("Other traffic matrix options to be implemented")
         self.set_traffic_matrix(tm)
