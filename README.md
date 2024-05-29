@@ -31,10 +31,10 @@ If that happens, need to install using a wheel file. Find the correct version fo
 
 Further instructions on this: https://docs.netsquid.org/latest-release/INSTALL.html
 
-The reason why we need to install Netsquid after requirements.txt file is that Netsquid does not correctly checks the version numbers of its dependencies and at some point some newer version of some dependency started causing issues and the whole tool stopped working (raised some errors especially AttributeErrors where it should not have done that). Therefore, in requirements.txt some specific versions of the dependencies are specified so that Netsquid works as expected.
+The reason why we need to install Netsquid after requirements.txt file is that Netsquid does not correctly check the version numbers of its dependencies and at some point some newer version of some dependency started causing issues and the whole tool stopped working (raised some errors especially AttributeErrors where it should not have done that). Therefore, in requirements.txt some specific versions of the dependencies are specified so that Netsquid works as expected.
 
 ## To deactivate the venv:
 ```deactivate```
 
 ## Credits:
-src/lib/quantinf is from: https://www.dr-qubit.org/matlab.html
+The quantinf package (./src/lib/quantinf) is from: https://www.dr-qubit.org/matlab.html
