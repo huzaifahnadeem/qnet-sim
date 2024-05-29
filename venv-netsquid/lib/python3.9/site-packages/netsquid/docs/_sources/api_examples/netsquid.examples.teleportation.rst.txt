@@ -1,7 +1,0 @@
-netsquid\.examples\.teleportation
----------------------------------
-
-.. automodule:: netsquid.examples.teleportation
-    :members:
-    :show-inheritance:
-    :inherited-members:

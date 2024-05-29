@@ -1,9 +1,0 @@
-Teleportation
-=============
-
-This is the example used in the tutorial.
-A full run through the code can be found `here <../tutorial.simulation.html>`_.
-
-
-.. automodule:: netsquid.examples.teleportation
-   :noindex:

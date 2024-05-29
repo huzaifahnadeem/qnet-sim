@@ -1,6 +1,0 @@
-netsquid\.qubits\.ketstates
----------------------------
-
-.. automodule:: netsquid.qubits.ketstates
-    :members:
-    :show-inheritance:

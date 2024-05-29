@@ -1,7 +1,0 @@
-netsquid\.components\.qprogram
-------------------------------
-
-.. automodule:: netsquid.components.qprogram
-    :members:
-    :show-inheritance:
-    :inherited-members:

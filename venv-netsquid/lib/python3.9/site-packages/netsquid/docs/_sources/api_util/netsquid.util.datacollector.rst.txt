@@ -1,6 +1,0 @@
-netsquid\.util\.datacollector
------------------------------
-
-.. automodule:: netsquid.util.datacollector
-    :members:
-    :show-inheritance:

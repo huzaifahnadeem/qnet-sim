@@ -1,7 +1,0 @@
-netsquid\.qubits\.dmtools
--------------------------
-
-.. automodule:: netsquid.qubits.dmtools
-    :members:
-    :show-inheritance:
-    :inherited-members:

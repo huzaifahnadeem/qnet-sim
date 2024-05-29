@@ -1,7 +1,0 @@
-netsquid\.components\.models\.cerrormodels
-------------------------------------------
-
-.. automodule:: netsquid.components.models.cerrormodels
-    :members:
-    :show-inheritance:
-    :inherited-members:

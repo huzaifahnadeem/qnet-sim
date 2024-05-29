@@ -1,8 +1,0 @@
-netsquid\.protocols\.protocol
------------------------------
-
-.. automodule:: netsquid.protocols.protocol
-    :members:
-    :show-inheritance:
-    :inherited-members:
-    :no-undoc-members:

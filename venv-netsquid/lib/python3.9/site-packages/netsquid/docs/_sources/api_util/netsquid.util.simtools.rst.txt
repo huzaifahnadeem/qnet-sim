@@ -1,6 +1,0 @@
-netsquid\.util\.simtools
-------------------------
-
-.. automodule:: netsquid.util.simtools
-    :members:
-    :show-inheritance:

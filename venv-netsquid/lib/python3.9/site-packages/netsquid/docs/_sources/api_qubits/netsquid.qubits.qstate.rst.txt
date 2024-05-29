@@ -1,6 +1,0 @@
-netsquid\.qubits\.qstate
-------------------------
-
-.. automodule:: netsquid.qubits.qstate
-    :members:
-    :show-inheritance:

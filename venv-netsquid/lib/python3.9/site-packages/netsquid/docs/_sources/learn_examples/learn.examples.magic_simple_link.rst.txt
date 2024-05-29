@@ -1,5 +1,0 @@
-Faster Link layer Protocol using abstraction
-============================================
-
-.. automodule:: netsquid.examples.magic_simple_link
-   :noindex:

@@ -1,8 +1,0 @@
-netsquid\.qubits\.sparsedmtools
--------------------------------
-
-.. automodule:: netsquid.qubits.sparsedmtools
-    :members:
-    :show-inheritance:
-    :inherited-members:
-

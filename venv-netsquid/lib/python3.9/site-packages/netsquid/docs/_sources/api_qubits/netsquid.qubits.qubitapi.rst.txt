@@ -1,6 +1,0 @@
-netsquid\.qubits\.qubitapi
---------------------------
-
-.. automodule:: netsquid.qubits.qubitapi
-    :members:
-    :show-inheritance:

@@ -1,6 +1,0 @@
-Repeater chain
-==============
-
-.. automodule:: netsquid.examples.repeater_chain
-   :noindex:
-

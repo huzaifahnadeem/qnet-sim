@@ -1,7 +1,0 @@
-netsquid\.components\.cchannel
-------------------------------
-
-.. automodule:: netsquid.components.cchannel
-    :members:
-    :show-inheritance:
-    :inherited-members:
