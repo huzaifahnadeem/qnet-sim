@@ -1,4 +1,7 @@
-# Q-net sim.
+# Q-net sim ( = placeholder name).
+
+A (work-in-progress) tool to help run quantum routing algorithms using netsquid.
+
 The tool needs to use some non-built-in packages. Recommended to use a virtual environment. Using "venv" for the following. venv comes with python 3.4+. Instructions for linux/mac with bash/zsh. 
 
 Ref: https://docs.python.org/3/library/venv.html
