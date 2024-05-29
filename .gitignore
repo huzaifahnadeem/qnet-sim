@@ -1,2 +1,3 @@
 venv-netsquid
 __pycache__
+src/experiments-results/*.json

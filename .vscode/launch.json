@@ -22,7 +22,6 @@
             // "args": ["--config_file=/home/hun13/netsquid-github/qnet-sim/src/sample_config.json"]
             // "args": ["--x_dist_gte=2", "--x_dist_lte=2"]
             // "args": ["--traffic_matrix=random", "--min_sd=2", "--max_sd=5", "--not_single_entanglement_flow_mode"]
-            // "args": ["--network=att"]
         }
     ]
 }
