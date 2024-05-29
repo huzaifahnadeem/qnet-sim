@@ -37,4 +37,4 @@ The reason why we need to install Netsquid after requirements.txt file is that N
 ```deactivate```
 
 ## Credits:
-The quantinf package (./src/lib/quantinf) is from: https://www.dr-qubit.org/matlab.html
+The quantinf package ( ./src/lib/quantinf ) is from: https://www.dr-qubit.org/matlab.html
