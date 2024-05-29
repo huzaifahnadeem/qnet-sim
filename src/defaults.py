@@ -58,7 +58,7 @@ class Defaults: # The default values to use as arguments
     cc_delay_std = 0 # only used for gaussian delay model
     cc_delay_photon_speed = 200000 # in km/s. 200000 km/s is the default set by netsquid
 
-    cc_loss_model = CCHANNEL_LOSS_MODEL.prob
+    cc_loss_model = CCHANNEL_LOSS_MODEL.none
     cc_loss_prob = 0.0
 
     prob_swap_loss = 0.0 # the 'q' param
