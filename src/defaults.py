@@ -21,7 +21,7 @@ class Defaults: # The default values to use as arguments
     p3_hop = 1
     max_sd_pairs_per_ts = 10
     min_sd_pairs_per_ts = 1
-    single_entanglement_flow_mode = False
+    single_entanglement_flow_mode = True
     src_set = [] # empty list => all nodes
     dst_set = [] # empty list => all nodes
     x_dist_gte = -1

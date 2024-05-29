@@ -25,10 +25,10 @@ def main():
     cmds_name = []
 
     # SLMP experiments repeat:
-    seeds = range(0, 10)
-    qs = ['0', '0.1', '0.5']
-    ps = ['0.4', '0.55', '0.7']
-    x_dists = range(0, 11)
+    seeds = range(0, 1) # 0)
+    qs = ['0'] #, '0.1', '0.5']
+    ps = ['0.4'] #, '0.55', '0.7']
+    x_dists = range(0, 1) #1)
 
     for x in x_dists:
         for p in ps:
