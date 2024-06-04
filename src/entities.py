@@ -251,8 +251,12 @@ class NodeEntity(pydynaa.Entity):
             qb_src, qb_dst = link
             for chann_num in ls[link].keys():
                 uv_status = ls[link][chann_num]
-                other_way = (qb_dst, qb_src)
-                vu_status = ls[other_way][chann_num]
+                if globals.args.two_sided_epr: # then check for the other side too
+                    other_way = (qb_dst, qb_src)
+                    vu_status = ls[other_way][chann_num]
+                else:   # if single sided epr:
+                    vu_status = False # since that node wasnt responsible for epr gen-share
+                    
                 if self.name == qb_src:
                     neighbour_received = uv_status
                     this_node_received = vu_status
@@ -270,7 +274,7 @@ class NodeEntity(pydynaa.Entity):
                     self.nis.epr_track_update(self.curr_ts, self.name, neighbour_name, 'unused (used other one)')
                 done.append((qb_src, qb_dst))
                 done.append((qb_dst, qb_src))
-        self.link_state = {'final':final_ls}
+        self.link_state = {'final': final_ls}
 
     def add_to_link_state(self, ebit_from, ebit_to, on_channel_num, received_successfully):
         if (ebit_from, ebit_to) not in self.link_state.keys():
