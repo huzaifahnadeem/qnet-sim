@@ -268,10 +268,10 @@ class NodeEntity(pydynaa.Entity):
                 use_this_node_epr = self._use_this_node_epr(neighbour_name, neighbour_received, this_node_received)
                 if use_this_node_epr == True:
                     final_ls.append((self.name, neighbour_name, chann_num))
-                    self.nis.epr_track_update(self.curr_ts, self.name, neighbour_name, 'used')
+                    # self.nis.epr_track_update(self.curr_ts, self.name, neighbour_name, 'used')
                 elif use_this_node_epr == False:
                     final_ls.append((neighbour_name, self.name, chann_num))
-                    self.nis.epr_track_update(self.curr_ts, self.name, neighbour_name, 'unused (used other one)')
+                    # self.nis.epr_track_update(self.curr_ts, self.name, neighbour_name, 'unused (used other one)')
                 done.append((qb_src, qb_dst))
                 done.append((qb_dst, qb_src))
         self.link_state = {'final': final_ls}
@@ -332,34 +332,25 @@ class NodeEntity(pydynaa.Entity):
     def _use_this_node_epr(self, neighbour_name, neighbour_received, this_node_received):
         # returns: True if use this node's pair. False is neighbour's is to be used. Returns None for the case where neither node's ebit reached across the connection, or in the case of one-sided-epr-share, the one ebit didnt reach across the channel.
         use_this_nodes_pair = None
-        if globals.args.two_sided_epr == True:
-            neighbour_has_both_ebits = neighbour_received
-            this_node_has_both_ebits = this_node_received
-            
-            if this_node_has_both_ebits and neighbour_has_both_ebits:
-                # use bigger id's ebits
-                if self._neighbour_responsible_for_ebit(neighbour_name):
-                    use_this_nodes_pair = False
-                else:
-                    use_this_nodes_pair = True
-            elif (not this_node_has_both_ebits) and neighbour_has_both_ebits:
-                # use this node's ebit
-                use_this_nodes_pair = True
-            elif this_node_has_both_ebits and (not neighbour_has_both_ebits):
-                # use neighbour's ebit
-                use_this_nodes_pair = False
-            else: # case: (not this_node_has_both_ebits) and (not neighbour_has_both_ebits):
-                # attempt again if num_of_tries <= nc. otherwise, nothing can be done (larger id node to inform NIS for data collection purposes).
-                pass
-        else: # case for one sided epr share
+        
+        neighbour_has_both_ebits = neighbour_received
+        this_node_has_both_ebits = this_node_received
+        
+        if this_node_has_both_ebits and neighbour_has_both_ebits:
+            # use bigger id's ebits
             if self._neighbour_responsible_for_ebit(neighbour_name):
                 use_this_nodes_pair = False
-                if this_node_received == False:
-                    use_this_nodes_pair = None
             else:
                 use_this_nodes_pair = True
-                if neighbour_received == False:
-                    use_this_nodes_pair = None
+        elif (not this_node_has_both_ebits) and neighbour_has_both_ebits:
+            # use this node's ebit
+            use_this_nodes_pair = True
+        elif this_node_has_both_ebits and (not neighbour_has_both_ebits):
+            # use neighbour's ebit
+            use_this_nodes_pair = False
+        else: # case: (not this_node_has_both_ebits) and (not neighbour_has_both_ebits):
+            # attempt again if num_of_tries <= nc. otherwise, nothing can be done (larger id node to inform NIS for data collection purposes).
+            pass
         
         return use_this_nodes_pair
 
