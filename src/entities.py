@@ -871,11 +871,8 @@ class NodeEntity(pydynaa.Entity):
             ) # the node receiving this message will run self._teleport_qubit()
 
     def _swap_successful(self):
-        op_successful = True
         q = globals.args.prob_swap_loss
-        r = random.randint(1, 100)
-        if r <= (q*100):
-            op_successful = False
+        op_successful = utils.rand_success(p_of_succ=q)
         
         return op_successful
 

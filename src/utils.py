@@ -1,5 +1,6 @@
 import copy
 import networkx as nx
+import random
 
 def latitude_longitude_distance(lat1, lat2, lon1, lon2):
     # from: https://www.geeksforgeeks.org/program-distance-two-points-earth/
@@ -82,3 +83,12 @@ def grid_x_dist(u, v):
 
 def grid_y_dist(u, v):
     return _grid_dist(u, v, 1) # node name's tuple = (x, y). x = idx 0, y = idx 1
+
+def rand_success(p_of_succ):
+    successful = True
+    p = p_of_succ
+    r = random.randint(1, 100)
+    if r <= (p*100):
+        successful = False
+
+    return successful

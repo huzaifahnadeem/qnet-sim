@@ -2,6 +2,7 @@ import netsquid as ns
 import random
 from numpy import pi
 import math
+import utils
 import globals
 # oct2py allows calling octave/matlab functions in python (octave needs to be installed in the system to use)
 oct2py = None # placeholder variable for the reference to the library.
@@ -143,10 +144,8 @@ class CChannelProbLoss(ns.components.models.cerrormodels.ClassicalErrorModel):
 
     def error_operation(self, items, delta_time=0, **kwargs):
         for i in range(len(items)):
-            drop = False
             p = self.prob_loss
-            r = random.randint(1, 100)
-            if r <= (p*100):
-                drop = True
+            drop = not (utils.rand_success(p_of_succ=p))
+            
             if drop:
                 items[i] = {}
