@@ -41,7 +41,7 @@ def main():
                 for s in seeds:
                     cmds_name.append(f'seed={str(s)}, p={p}, q={q}')
                     cmds.append(
-                        CMD_PREFIX + f"--seed={str(s)} --alg=SLMPg --network=grid_2d --grid_dim=11 --prob_swap_loss={q} --qc_loss_model=fixed --qc_p_loss_init={p} --x_dist_gte={str(x)} --x_dist_lte={str(x)} --y_dist_gte={str(x)} --y_dist_lte={str(x)}"
+                        CMD_PREFIX + f"--seed={str(s)} --alg=SLMPg --network=grid_2d --grid_dim=11 --prob_swap_loss={q} --qc_loss_model=fixed --qc_p_loss_init={p} --x_dist_gte={str(x)} --x_dist_lte={str(x)} --y_dist_gte={str(x)} --y_dist_lte={str(x)} --max_sd=10 --min_sd=10"
                     )
 
     args = []
