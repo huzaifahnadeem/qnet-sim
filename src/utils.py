@@ -84,9 +84,9 @@ def grid_x_dist(u, v):
 def grid_y_dist(u, v):
     return _grid_dist(u, v, 1) # node name's tuple = (x, y). x = idx 0, y = idx 1
 
-def rand_success(p_of_succ):
+def rand_success(p_of_fail):
     successful = True
-    p = p_of_succ
+    p = p_of_fail
     r = random.randint(1, 100)
     if r <= (p*100):
         successful = False
