@@ -32,8 +32,10 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--num_ts', required=False, default=config.num_ts, type=int, help=f'The total number of timeslots to run for. Default set to {config.num_ts}')
     parser.add_argument('--ts_length', required=False, default=config.ts_length, type=int, help=f'How long each timeslot is in terms of simulation instants. Default set to {config.ts_length}')
     parser.add_argument('--p2_nc', required=False, default=config.p2_nc, type=int, help=f'During P2, each channel can make a number nc of attempts, nc >= 1, until a link is built of timeout. Default set to {config.p2_nc}.')
-    parser.add_argument('--two_sided_epr', required=False, default=config.two_sided_epr, type=bool, help=f'If True, both nodes of an edge attempt to establish entanglement. If both sides\' ebit gets across the channel successfully then ebit from the node with the larger ID is used. If False, only the node with the larger ID sends the ebit. Default set to {config.two_sided_epr}.')
     parser.add_argument('--link_establish_timeout', required=False, default=config.link_establish_timeout, type=int, help=f'During establishment of links in phase 2, what time interval to use for timeouts (i.e. if havent received the ebit by time timeout then consider it lost). Default set to {config.link_establish_timeout}.')
+    parser.add_argument('--two_sided_epr', required=False, action='store_true', help=f'If this argument used then both nodes on each end of the edge attempt to create and share an epr pair.')
+    parser.add_argument('--one_sided_epr', dest='two_sided_epr', action='store_false', help=f'If this argument used then amongst the two nodes on each end of the edges, the node with the larger ID (name) will attempt to create and share an epr pair.')
+    parser.set_defaults(two_sided_epr=config.two_sided_epr)
 
     # args for traffic matrix:
     parser.add_argument('--traffic_matrix', required=False, default=config.traffic_matrix, type=globals.TRAFFIC_MATRIX_CHOICES, action=globals.EnumInParamAction, help=f'How to generate the traffic matrix. Options: {[x.name for x in globals.TRAFFIC_MATRIX_CHOICES]}.')
@@ -52,7 +54,7 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--qc_noise_t1', required=False, default=config.qc_noise_t1, type=float, help=f'The "T1" parameter for the T1T2 noise model')
     parser.add_argument('--qc_noise_t2', required=False, default=config.qc_noise_t2, type=float, help=f'The "T2" parameter for the T1T2 noise model')
     parser.add_argument('--qc_noise_time_independent', required=False, action='store_true', help=f'If this argument used then the --qc_noise_model is time independent and --qc_noise_rate is the probability to be used with the model.')
-    parser.add_argument('--qc_noise_time_dependent', dest='--qc_noise_time_independent', action='store_false', help=f'If this argument used then the --qc_noise_model is time dependent and --qc_noise_rate, in Hz, is to be used with the model.')
+    parser.add_argument('--qc_noise_time_dependent', dest='qc_noise_time_independent', action='store_false', help=f'If this argument used then the --qc_noise_model is time dependent and --qc_noise_rate, in Hz, is to be used with the model.')
     parser.set_defaults(qc_noise_time_independent=config.qc_noise_is_time_independent)
     parser.add_argument('--qc_loss_model', required=False, default=config.qc_loss_model, type=globals.QCHANNEL_LOSS_MODEL, action=globals.EnumInParamAction, help=f'This is the loss model to use for quantum channels. Options: {[x.name for x in globals.QCHANNEL_LOSS_MODEL]}')
     parser.add_argument('--qc_p_loss_init', required=False, default=config.qc_p_loss_init, type=float, help=f'The probability of losing the qubit as it enters the channel. Only used with --qc_loss_model=fibre and as the fixed probability of loss "p" in --qc_loss_model=fixed')
@@ -74,7 +76,7 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--qm_noise_model', required=False, default=config.qm_noise_model, type=globals.QMEM_NOISE_MODEL, action=globals.EnumInParamAction, help=f'This is the noise model to use for quantum memories. Options: {[x.name for x in globals.QMEM_NOISE_MODEL]}')
     parser.add_argument('--qm_noise_rate', required=False, default=config.qm_noise_rate, type=float, help=f'')
     parser.add_argument('--qm_noise_time_independent', required=False, action='store_true', help=f'If this argument used then the --qm_noise_model is time independent and --qm_noise_rate is the probability to be used with the model.')
-    parser.add_argument('--qm_noise_time_dependent', dest='--qm_noise_time_independent', action='store_false', help=f'If this argument used then the --qm_noise_model is time dependent and --qm_noise_rate, in Hz, is to be used with the model.')
+    parser.add_argument('--qm_noise_time_dependent', dest='qm_noise_time_independent', action='store_false', help=f'If this argument used then the --qm_noise_model is time dependent and --qm_noise_rate, in Hz, is to be used with the model.')
     parser.set_defaults(qm_noise_time_independent=config.qm_noise_time_independent)
 
     # args for network set up:
@@ -85,7 +87,7 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
 
     # args specific to SLMP:
     parser.add_argument('--single_entanglement_flow_mode', required=False, action='store_true',  help=f'If this argument used then there is only a single unique s-d pair per timeslot (e.g. to use with single entanglement flow in SLMP). The number of qubits to be sent between src and dst is dependent on the --max_sd and --min_sd arguments.')
-    parser.add_argument('--not_single_entanglement_flow_mode', dest='--single_entanglement_flow_mode', action='store_false', help=f'Use this if you dont want to toggle --single_entanglement_flow_mode')
+    parser.add_argument('--not_single_entanglement_flow_mode', dest='single_entanglement_flow_mode', action='store_false', help=f'Use this if you dont want to toggle --single_entanglement_flow_mode')
     parser.set_defaults(single_entanglement_flow_mode=config.single_entanglement_flow_mode)
     
     # args specific to QPASS:
@@ -97,7 +99,7 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
     parser.add_argument('--alg', required=False, default=config.algorithm, type=globals.ALGS, action=globals.EnumInParamAction, help=f'Choice between SLMPg, SLMPl, QPASS, and QCAST. Default set to {config.algorithm}.')
     parser.add_argument('--prob_swap_loss', required=False, default=config.prob_swap_loss, type=float, help=f'The probability that a pair of qubits would be lost when a swap operation is performed. Its the \'q\' parameter.') # TODO: eventually this will be removes and instead a noise model will be added to the PhysicalInstruction objects for the swap operation
     parser.add_argument('--use_quantinf_data_state', required=False, action='store_true', help=f'If this argument used then the randPsi function from the quantinf package is used to randomly generate each data qubit\'s state.')
-    parser.add_argument('--dont_use_quantinf_data_state', dest='--use_quantinf_data_state', action='store_false', help=f'If this argument used then instead of using the randPsi function from the quantinf package, each data qubit\'s state is generated by applying a randomly generated rotation operator (random angle between [0, 2pi] radians, a random rotation axis, and randomly deciding whether or not to complex conjugate the operator) on a state randomly selected from: |−⟩, |+⟩, |1Y⟩, |0Y⟩, |1⟩, |0⟩.')
+    parser.add_argument('--dont_use_quantinf_data_state', dest='use_quantinf_data_state', action='store_false', help=f'If this argument used then instead of using the randPsi function from the quantinf package, each data qubit\'s state is generated by applying a randomly generated rotation operator (random angle between [0, 2pi] radians, a random rotation axis, and randomly deciding whether or not to complex conjugate the operator) on a state randomly selected from: |−⟩, |+⟩, |1Y⟩, |0Y⟩, |1⟩, |0⟩.')
     parser.set_defaults(use_quantinf_data_state=config.use_quantinf_data_state)
 
     globals.args = parser.parse_args()
