@@ -102,5 +102,5 @@ class CCHANNEL_LOSS_MODEL(Enum):
 
 class TRAFFIC_MATRIX_CHOICES(Enum):
     random = 'random'
-    # file = 'file'
+    file = 'file'
     # tmgen_uniform = 'tmgen_uniform'

@@ -867,7 +867,7 @@ class NodeEntity(pydynaa.Entity):
 
     def _swap_successful(self):
         q = globals.args.prob_swap_loss
-        op_successful = utils.rand_success(p_of_succ=q)
+        op_successful = utils.rand_success(p_of_fail=q)
         
         return op_successful
 
@@ -888,6 +888,8 @@ class NIS(pydynaa.Entity): # The Network Information Server
         tm = None
         if globals.args.traffic_matrix is globals.TRAFFIC_MATRIX_CHOICES.random:
             tm = traffic_matrix.random_traffic_matrix(self.network)
+        elif globals.args.traffic_matrix is globals.TRAFFIC_MATRIX_CHOICES.file:
+            tm = traffic_matrix.tm_from_file(globals.args.tm_file)
         else:
             raise NotImplementedError("Other traffic matrix options to be implemented")
         self.set_traffic_matrix(tm)

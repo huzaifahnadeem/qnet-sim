@@ -20,6 +20,7 @@
             "justMyCode": false,
             // "args": ["--one_sided_epr"]
             // "args": ["--two_sided_epr"]
+            // "args": ["--num_ts=6", "--traffic_matrix=file", "--tm_file=/home/hun13/qnet-sim/src/sample_tm_file.json", "--grid_dim=10"]
         }
     ]
 }

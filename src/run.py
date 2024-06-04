@@ -34,17 +34,20 @@ def main():
     # qs = ['0', '0.1']
     # ps = ['0.4', '0.55']
     pqs = [('0.55', '0'), ('0.4', '0.1'), ('0.4', '0')]
-    x_dists = range(1, 11)
+    # x_dists = range(1, 11)
 
     exp_counter = 0
-    for x in x_dists:
-        for p, q in pqs:
-            for s in seeds:
-                exp_counter += 1
-                cmds_name.append(f'exp_num {exp_counter} out of {len(list(seeds))*len(list(x_dists))*len(pqs)}')
-                cmds.append(
-                    CMD_PREFIX + f"--one_sided_epr --seed={str(s)} --alg=SLMPg --network=grid_2d --grid_dim=11 --prob_swap_loss={q} --qc_loss_model=fixed --qc_p_loss_init={p} --x_dist_gte={str(x)} --x_dist_lte={str(x)} --y_dist_gte={str(x)} --y_dist_lte={str(x)} --max_sd=10 --min_sd=10"
-                )
+    # total_exps = len(list(seeds))*len(list(x_dists))*len(pqs)
+    total_exps = len(list(seeds))*len(pqs)
+    # for x in x_dists:
+    for p, q in pqs:
+        for s in seeds:
+            exp_counter += 1
+            cmds_name.append(f'exp_num {exp_counter} out of {total_exps}')
+            cmds.append(
+                # CMD_PREFIX + f"--one_sided_epr --num_ts=10 --traffic_matrix=file --tm_file=./sample_tm_file.json --alg=SLMPg --network=grid_2d --grid_dim=11 --qc_loss_model=fixed --seed={str(s)} --qc_p_loss_init={p} --prob_swap_loss={q} --x_dist_gte={str(x)} --x_dist_lte={str(x)} --y_dist_gte={str(x)} --y_dist_lte={str(x)}" #  --max_sd=10 --min_sd=10
+                CMD_PREFIX + f"--one_sided_epr --num_ts=10 --traffic_matrix=file --tm_file=/home/hun13/qnet-sim/src/sample_tm_file.json --alg=SLMPg --network=grid_2d --grid_dim=20 --qc_loss_model=fixed --seed={str(s)} --qc_p_loss_init={p} --prob_swap_loss={q}"
+            )
 
     args = []
     for idx, c in enumerate(cmds):

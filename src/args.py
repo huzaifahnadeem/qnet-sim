@@ -39,6 +39,7 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
 
     # args for traffic matrix:
     parser.add_argument('--traffic_matrix', required=False, default=config.traffic_matrix, type=globals.TRAFFIC_MATRIX_CHOICES, action=globals.EnumInParamAction, help=f'How to generate the traffic matrix. Options: {[x.name for x in globals.TRAFFIC_MATRIX_CHOICES]}.')
+    parser.add_argument('--tm_file', required=False, default=config.tm_file, type=str, help=f'Used to select file for --traffic_matrix=file')
     parser.add_argument('--max_sd', required=False, default=config.max_sd_pairs_per_ts, type=int, help=f'Max number of S-D pairs in each timeslot (inclusive). Default set to {config.max_sd_pairs_per_ts}.')
     parser.add_argument('--min_sd', required=False, default=config.min_sd_pairs_per_ts, type=int, help=f'Min number of S-D pairs in each timeslot (inclusive). Default set to {config.min_sd_pairs_per_ts}.')
     parser.add_argument('--src_set', required=False, default=config.src_set, type=str, nargs='*', help=f'Source nodes would be selected randomly from this set. Usage: "... --src_set node1 node2 node3". Leaving empty means all nodes can be used. Default set to {config.src_set}.')
