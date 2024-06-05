@@ -1,13 +1,19 @@
 #!/usr/bin/env python
 
 import subprocess
-import os
 import multiprocessing
+import argparse
+import yaml
 
-NUM_POOL = 5
+class defaults:
+    num_pool = 5
 
-# OUTPUT_DIRECTORY = "./experiments-results/"
-CMD_PREFIX = 'python main.py '
+def get_args():
+    parser = argparse.ArgumentParser(description="Tool to run main.py multiple times with different params for experiments.")
+    parser.add_argument('--num_pool', required=False, default=defaults.num_pool, type=int, help=f'To set the number of pools for parallel processing. Default set to {defaults.num_pool}')
+    parser.add_argument('--runfile', required=True, type=str, help=f'Path to the runfile to use. Sample runfile available in ./runfiles/sample_run.yaml')
+
+    return parser.parse_args()
 
 def run_command(cmds):
     cmd, exp_name = cmds
@@ -19,46 +25,74 @@ def run_command(cmds):
         print(result.stderr)
     except SystemExit:
         pass
+    except Exception as e:
+        return e
 
     return 1
 
 def main():
-    # if not os.path.exists(f"./{OUTPUT_DIRECTORY}/"):
-    #     os.makedirs(f"./{OUTPUT_DIRECTORY}/")
+    args = get_args()
+    
+    runfile = None
+    with open(args.runfile) as stream:
+        runfile = yaml.safe_load(stream)
+    
+    # create the command prefix using 'python main.py' and the static args:
+    cmd = 'python main.py'
+    for arg in runfile['static'].keys():
+        val = runfile['static'][arg]
+        cmd += f" --{arg}{'' if val is None else f'={str(val)}'}" # for binary flag args like --one_sided_epr, val is stored as None
+    cmd_prefix = cmd
 
+    # handle loopfor args:
+    seeds, probs = None, None
+    for arg in runfile['loopfor'].keys():
+        if arg == 'seed':
+            keyword = list(runfile['loopfor']['seed'].keys())[0]
+            if keyword == 'range':
+                seeds = list(range(runfile['loopfor']['seed']['range'][0], runfile['loopfor']['seed']['range'][1]))
+            if keyword == 'list':
+                seeds = runfile['loopfor']['seed']['list']
+        elif arg == 'probs':
+            ps = runfile['loopfor']['probs']['p']
+            qs = runfile['loopfor']['probs']['q']
+            p_isof_success, q_isof_success = None, None
+            if 'p_isof_success' in runfile['loopfor']['probs'].keys():
+                p_isof_success = runfile['loopfor']['probs']['p_isof_success']
+            else:
+                p_isof_success = False
+            if 'q_isof_success' in runfile['loopfor']['probs'].keys():
+                q_isof_success = runfile['loopfor']['probs']['q_isof_success']
+            else:
+                q_isof_success = False
+            ps = [1-p for p in ps] if p_isof_success else ps
+            qs = [1-q for q in qs] if q_isof_success else qs
+            if runfile['loopfor']['probs']['iszip']:
+                probs = zip(ps, qs)
+            else:
+                probs = []
+                for p in ps:
+                    for q in qs:
+                        probs.append((p, q))
+        else:
+            raise ValueError # unknown arg
+    
     cmds = []
-    cmds_name = []
+    for seed in seeds:
+        s = str(seed)
+        for prob_p, prob_q in probs:
+            p = str(prob_p)
+            q = str(prob_q)
+            this_cmd = f"{cmd_prefix} --seed={s} --qc_p_loss_init={p} --prob_swap_loss={q}"
+            cmds.append(this_cmd)
+    total_num_cmds = len(cmds)
 
-    # SLMP experiments repeat:
-    # seeds = range(0, 20)
-    # seeds = range(0, 10)
-    seeds = range(10, 20)
-    # qs = ['0', '0.1']
-    # ps = ['0.4', '0.55']
-    pqs = [('0.55', '0'), ('0.4', '0.1'), ('0.4', '0')]
-    # x_dists = range(1, 11)
-
-    exp_counter = 0
-    # total_exps = len(list(seeds))*len(list(x_dists))*len(pqs)
-    total_exps = len(list(seeds))*len(pqs)
-    # for x in x_dists:
-    for p, q in pqs:
-        for s in seeds:
-            exp_counter += 1
-            cmds_name.append(f'exp_num {exp_counter} out of {total_exps}')
-            cmds.append(
-                # CMD_PREFIX + f"--one_sided_epr --num_ts=10 --traffic_matrix=file --tm_file=./sample_tm_file.json --alg=SLMPg --network=grid_2d --grid_dim=11 --qc_loss_model=fixed --seed={str(s)} --qc_p_loss_init={p} --prob_swap_loss={q} --x_dist_gte={str(x)} --x_dist_lte={str(x)} --y_dist_gte={str(x)} --y_dist_lte={str(x)}" #  --max_sd=10 --min_sd=10
-                CMD_PREFIX + f"--one_sided_epr --num_ts=11 --traffic_matrix=file --tm_file=/home/hun13/qnet-sim/src/sample_tm_file.json --alg=SLMPg --network=grid_2d --grid_dim=19 --qc_loss_model=fixed --seed={str(s)} --qc_p_loss_init={p} --prob_swap_loss={q}"
-            )
-
-    args = []
-    for idx, c in enumerate(cmds):
-        this_exp_name = cmds_name[idx]
-        this_cmd = c
-        args.append((this_cmd, this_exp_name))
-        
-    pool = multiprocessing.Pool(NUM_POOL)
-    result = pool.map(run_command, args)
+    args_run_command_fn = []
+    for idx, cmd in enumerate(cmds):
+        exp_name = f"# {idx + 1} out of {total_num_cmds}"
+        args_run_command_fn.append((cmd, exp_name))
+    pool = multiprocessing.Pool(args.num_pool)
+    result = pool.map(run_command, args_run_command_fn)
     pool.terminate()
     print(result)
 
