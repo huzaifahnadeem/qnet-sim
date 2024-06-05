@@ -4,7 +4,7 @@ import subprocess
 import os
 import multiprocessing
 
-NUM_POOL = 4
+NUM_POOL = 5
 
 # OUTPUT_DIRECTORY = "./experiments-results/"
 CMD_PREFIX = 'python main.py '
@@ -30,7 +30,9 @@ def main():
     cmds_name = []
 
     # SLMP experiments repeat:
-    seeds = range(0, 20)
+    # seeds = range(0, 20)
+    # seeds = range(0, 10)
+    seeds = range(10, 20)
     # qs = ['0', '0.1']
     # ps = ['0.4', '0.55']
     pqs = [('0.55', '0'), ('0.4', '0.1'), ('0.4', '0')]
@@ -46,7 +48,7 @@ def main():
             cmds_name.append(f'exp_num {exp_counter} out of {total_exps}')
             cmds.append(
                 # CMD_PREFIX + f"--one_sided_epr --num_ts=10 --traffic_matrix=file --tm_file=./sample_tm_file.json --alg=SLMPg --network=grid_2d --grid_dim=11 --qc_loss_model=fixed --seed={str(s)} --qc_p_loss_init={p} --prob_swap_loss={q} --x_dist_gte={str(x)} --x_dist_lte={str(x)} --y_dist_gte={str(x)} --y_dist_lte={str(x)}" #  --max_sd=10 --min_sd=10
-                CMD_PREFIX + f"--one_sided_epr --num_ts=10 --traffic_matrix=file --tm_file=/home/hun13/qnet-sim/src/sample_tm_file.json --alg=SLMPg --network=grid_2d --grid_dim=20 --qc_loss_model=fixed --seed={str(s)} --qc_p_loss_init={p} --prob_swap_loss={q}"
+                CMD_PREFIX + f"--one_sided_epr --num_ts=11 --traffic_matrix=file --tm_file=/home/hun13/qnet-sim/src/sample_tm_file.json --alg=SLMPg --network=grid_2d --grid_dim=19 --qc_loss_model=fixed --seed={str(s)} --qc_p_loss_init={p} --prob_swap_loss={q}"
             )
 
     args = []
