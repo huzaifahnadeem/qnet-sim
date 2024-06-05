@@ -77,6 +77,7 @@ def main():
         else:
             raise ValueError # unknown arg
     
+    # run commands (make args.num_pool pools and each will be responsible to run a division of the commands (commands run through subprocess.run))
     cmds = []
     for seed in seeds:
         s = str(seed)
