@@ -10,6 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
+            // "args": ["--runfile=/home/hun13/qnet-sim/src/runfiles/sample_run.yaml"]
         },
         {
             "name": "Python: src/main.py",

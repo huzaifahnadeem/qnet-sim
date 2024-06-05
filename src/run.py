@@ -50,7 +50,7 @@ def main():
         if arg == 'seed':
             keyword = list(runfile['loopfor']['seed'].keys())[0]
             if keyword == 'range':
-                seeds = list(range(runfile['loopfor']['seed']['range'][0], runfile['loopfor']['seed']['range'][1]))
+                seeds = range(runfile['loopfor']['seed']['range'][0], runfile['loopfor']['seed']['range'][1])
             if keyword == 'list':
                 seeds = runfile['loopfor']['seed']['list']
         elif arg == 'probs':
@@ -68,7 +68,7 @@ def main():
             ps = [1-p for p in ps] if p_isof_success else ps
             qs = [1-q for q in qs] if q_isof_success else qs
             if runfile['loopfor']['probs']['iszip']:
-                probs = zip(ps, qs)
+                probs = list(zip(ps, qs))
             else:
                 probs = []
                 for p in ps:
