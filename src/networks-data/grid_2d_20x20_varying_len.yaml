@@ -1,24 +1,6 @@
-# TODO
 description: "A 2D grid of size 20x20 nodes with varying lengths of edges" # this value is only for description. Doesnt do anything
 
-graph: {   
-    'n1': {'n2':{'length':l, 'width':w,}, 'n5':{'length':l, 'width':w,}},
-    'n2': {'n3':{'length':l, 'width':w,}, 'n6':{'length':l, 'width':w,}},
-    'n3': {'n7':{'length':l, 'width':w,}, 'n4':{'length':l, 'width':w,}},
-    'n4': {'n8':{'length':l, 'width':w,}},
-
-    'n5': {'n6':{'length':l, 'width':w,}, 'n9':{'length':l, 'width':w,}},
-    'n6': {'n7':{'length':l, 'width':w,}, 'n10':{'length':l, 'width':w,}},
-    'n7': {'n8':{'length':l, 'width':w,}, 'n11':{'length':l, 'width':w,}},
-    'n8': {'n12':{'length':l, 'width':w,}},
-
-    'n9': {'n10':{'length':l, 'width':w,}, 'n13':{'length':l, 'width':w,}},
-    'n10': {'n11':{'length':l, 'width':w,}, 'n14':{'length':l, 'width':w,}},
-    'n11': {'n12':{'length':l, 'width':w,}, 'n15':{'length':l, 'width':w,}},
-    'n12': {'n16':{'length':l, 'width':w,}},
-
-    'n13': {'n14':{'length':l, 'width':w,}},
-    'n14': {'n15':{'length':l, 'width':w,}},
-    'n15': {'n16':{'length':l, 'width':w,}},
-    'n16': {}, 
-}
+use: grid_2d_graph # options: "dictionary", any networkx function name. If using dictionary then define a key "dictionary" with a dict of dict that networkx supports. For a nx function, pass positional arguments in order using list as the value with key "parameters"
+parameters: [20, 20]
+lengths: [0.3, 0.4, 0.5, 0.6, 0.7]
+withs: [1]

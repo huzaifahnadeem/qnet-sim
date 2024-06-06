@@ -4,6 +4,7 @@ This file contains the functions to import certain network topologies from saved
 import globals
 import networkx as nx
 import os 
+import yaml
 
 data_directory_path = f'{os.path.dirname(os.path.realpath(__file__))}/networks-data'
 default_length = globals.args.length
@@ -14,11 +15,31 @@ default_width = globals.args.width
 def _from_file():
     raise NotImplementedError("TODO")
 
-    file = globals.args.network_file
-    if file is None or file == '':
-        raise ValueError("No network file selected. Need to specify the file to use if --network=file is used.")
-    
+    # file = globals.args.network_file
+    # if file is None or file == '':
+    #     raise ValueError("No network file selected. Need to specify the file to use if --network=file is used.")
 
+    # G = None
+    # with open(file) as stream:
+    #     nw_data = yaml.safe_load(stream)
+    #     if nw_data['use'] == 'dictionary':
+    #         pass
+    #     else:
+    #         funct_name = nw_data['use']
+    #         params = nw_data['parameters']
+    #         func = getattr(nx, funct_name)
+    #         G = func(*params)
+    #         lengths = nw_data['lengths']
+    #         withs = nw_data['withs']
+    #         for i in range((lengths))
+    #         l
+    #         # set lengths of the edges:
+    #         for e in G.edges(data=True):
+    #             e[2]['length'] = l
+            
+    #         # set lengths of the edges:
+    #         for e in G.edges(data=True):
+    #             e[2]['width'] = w
 
 def _grid_2d(dim=globals.args.grid_dim):
     l = default_length
