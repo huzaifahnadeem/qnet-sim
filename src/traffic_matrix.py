@@ -1,7 +1,7 @@
 import random
 import utils
 import globals
-import json
+import yaml
 
 def random_traffic_matrix(network):
     def calc_dist_range(dist_is_specified, grid_dim, dist_lte=None, dist_gte=None):
@@ -57,14 +57,14 @@ def random_traffic_matrix(network):
     return tm
 
 def tm_from_file(file_name):
-    # assumptions: in json file, key denotes ts. val is a list of 2-element lists [src, dst]. The val list is processed in order i.e. first s-d pair attempted first then second and so on. If more keys than timeslots then arg --num_ts is the cut off. Keys assumed to start from 1 and in consecutive order.
+    # sample file: src/sample_tm_file.yaml
 
     num_of_ts = globals.args.num_ts
     tm = [[] for _ in range(num_of_ts)]
     with open(file_name) as tm_file:
-        json_data = json.load(tm_file)
+        tm_data = yaml.safe_load(tm_file)
         for ts in range(1, num_of_ts + 1):
-            for sd_pair in json_data[str(ts)]:
+            for sd_pair in tm_data[str(ts)]:
                 sd = (sd_pair[0], sd_pair[1])
                 tm[ts-1].append(sd)
         
