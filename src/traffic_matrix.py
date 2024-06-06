@@ -64,7 +64,7 @@ def tm_from_file(file_name):
     with open(file_name) as tm_file:
         tm_data = yaml.safe_load(tm_file)
         for ts in range(1, num_of_ts + 1):
-            for sd_pair in tm_data[str(ts)]:
+            for sd_pair in tm_data[ts]:
                 sd = (sd_pair[0], sd_pair[1])
                 tm[ts-1].append(sd)
         
