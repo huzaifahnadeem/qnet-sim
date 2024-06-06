@@ -12,6 +12,7 @@ class Defaults: # The default values to use as arguments
     
     seed = 1 # same seed is used wherever there is a possibility to use a seed
     network_toplogy = NET_TOPOLOGY.GRID_2D
+    network_file = '' # '' or None will both return the same error
     grid_dim = 4
     algorithm = ALGS.SLMPG
     num_ts = 5

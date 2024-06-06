@@ -11,6 +11,15 @@ default_width = globals.args.width
 
 # TODO: https://networkx.org/documentation/stable/reference/generators.html has a lot of possible topologies. might be nice to add some of them.
 
+def _from_file():
+    raise NotImplementedError("TODO")
+
+    file = globals.args.network_file
+    if file is None or file == '':
+        raise ValueError("No network file selected. Need to specify the file to use if --network=file is used.")
+    
+
+
 def _grid_2d(dim=globals.args.grid_dim):
     l = default_length
     w = default_width if default_width > 0 else 1
@@ -180,7 +189,9 @@ def network_choice():
     top = globals.NET_TOPOLOGY
     nx_graph = None
     
-    if network_choice is top.GRID_2D:
+    if network_choice is top.FILE:
+        nx_graph = _from_file()
+    elif network_choice is top.GRID_2D:
         nx_graph = _grid_2d()
     elif network_choice is top.ATT:
         nx_graph = _att()
