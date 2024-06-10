@@ -1,6 +1,6 @@
 loopfor:
     seed: 
-      range: [50, 100] # range = [a, b). alternatively, instead of a range, use 'list' for a specific list of seeds to use
+      range: [100, 200] # range = [a, b). alternatively, instead of a range, use 'list' for a specific list of seeds to use
     probs:
       p: [0.55, 0.4, 0.4]
       q: [0, 0.1, 0]

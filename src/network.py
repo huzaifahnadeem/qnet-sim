@@ -243,7 +243,7 @@ class Network(ns_Network):
             elif globals.args.qc_loss_model is LOSS_MODELS.fibre:
                 q_channel_model[key_quantum_loss_model] = ns.components.models.qerrormodels.FibreLossModel(p_loss_init=globals.args.qc_p_loss_init, p_loss_length=globals.args.qc_p_loss_length)
             elif globals.args.qc_loss_model is LOSS_MODELS.fixed:
-                q_channel_model[key_quantum_loss_model] = quantum.FixedProbabilityLoss(p_prob=globals.args.qc_p_loss_init)
+                q_channel_model[key_quantum_loss_model] = quantum.FixedProbabilityLoss(p_prob=globals.args.qc_p_loss_init, p_loss_length=globals.args.qc_p_loss_length)
 
             # setting the delay model:
             if globals.args.qc_delay_model is DELAY_MODELS.none:

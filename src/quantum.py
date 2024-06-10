@@ -1,9 +1,10 @@
 import netsquid as ns
 import random
-from numpy import pi
+from numpy import pi, power
 import math
 import utils
 import globals
+
 # oct2py allows calling octave/matlab functions in python (octave needs to be installed in the system to use)
 oct2py = None # placeholder variable for the reference to the library.
 octave = None  # placeholder variable for the reference to the this module. importlib is called in setup.py which sets these two variables.
@@ -121,12 +122,17 @@ class FixedProbabilityLoss(ns.components.models.qerrormodels.FibreLossModel):
     def __init__(self, p_prob, p_loss_init=0, p_loss_length=0, rng=None):
         super().__init__(p_loss_init, p_loss_length, rng)
         self.p_prob = p_prob
+        self.p_loss_init = p_prob
 
     def error_operation(self, qubits, delta_time=0, **kwargs):
         for idx, qubit in enumerate(qubits):
             if qubit is None:
                 continue
-            prob_loss = self.p_prob
+
+            if self.p_loss_length == 0: # doesnt make a difference just so that its clear 
+                prob_loss = self.p_prob
+            else:
+                prob_loss = 1 - (1 - self.p_prob) * power(10, - kwargs['length'] * self.p_loss_length / 10)
 
             p = prob_loss
             discard = not (utils.rand_success(p_of_fail=p))
