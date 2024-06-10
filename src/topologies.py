@@ -13,33 +13,16 @@ default_width = globals.args.width
 # TODO: https://networkx.org/documentation/stable/reference/generators.html has a lot of possible topologies. might be nice to add some of them.
 
 def _from_file():
-    raise NotImplementedError("TODO")
+    file = globals.args.network_file
+    if file is None or file == '':
+        raise ValueError("No network file selected. Need to specify the file to use if --network=file is used.")
 
-    # file = globals.args.network_file
-    # if file is None or file == '':
-    #     raise ValueError("No network file selected. Need to specify the file to use if --network=file is used.")
-
-    # G = None
-    # with open(file) as stream:
-    #     nw_data = yaml.safe_load(stream)
-    #     if nw_data['use'] == 'dictionary':
-    #         pass
-    #     else:
-    #         funct_name = nw_data['use']
-    #         params = nw_data['parameters']
-    #         func = getattr(nx, funct_name)
-    #         G = func(*params)
-    #         lengths = nw_data['lengths']
-    #         withs = nw_data['withs']
-    #         for i in range((lengths))
-    #         l
-    #         # set lengths of the edges:
-    #         for e in G.edges(data=True):
-    #             e[2]['length'] = l
-            
-    #         # set lengths of the edges:
-    #         for e in G.edges(data=True):
-    #             e[2]['width'] = w
+    G = None
+    with open(file) as stream:
+        nw_data = yaml.safe_load(stream)
+        G = nx.from_dict_of_dicts(nw_data)
+    
+    return G
 
 def _grid_2d(dim=globals.args.grid_dim):
     l = default_length

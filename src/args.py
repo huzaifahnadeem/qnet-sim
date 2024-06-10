@@ -82,7 +82,7 @@ def get_args(): # TODO: bug fix: using the --help flag only prints help for --co
 
     # args for network set up:
     parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumInParamAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
-    parser.add_argument('--network_file', required=False, default=config.network_file, type=str, help=f'The network topology will be read from this file if --network=file .')
+    parser.add_argument('--network_file', required=False, default=config.network_file, type=str, help=f'The network topology will be read from this file if --network=file . The file should be a yaml file representing a dict of dict format of networkx. The network is created exactly as in the file i.e. no default lengths/widths.')
     parser.add_argument('--grid_dim', required=False, default=config.grid_dim, type=int, help=f'The dimension of the grid topology if using --network=grid_2d. Default set to {config.grid_dim}')
     parser.add_argument('--length', required=False, default=config.length, type=int, help=f'Used for any edge that does not have its length specified. Unit = km. Default set to {config.length} km.')
     parser.add_argument('--width', required=False, default=config.width, type=int, help=f'Used for any edge that does not have its width specified. Default set to {config.width}.')

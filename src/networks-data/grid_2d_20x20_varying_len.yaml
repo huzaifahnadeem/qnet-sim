@@ -1,6 +1,0 @@
-description: "A 2D grid of size 20x20 nodes with varying lengths of edges" # this value is only for description. Doesnt do anything
-
-use: grid_2d_graph # options: "dictionary", any networkx function name. If using dictionary then define a key "dictionary" with a dict of dict that networkx supports. For a nx function, pass positional arguments in order using list as the value with key "parameters"
-parameters: [20, 20]
-lengths: [0.3, 0.4, 0.5, 0.6, 0.7]
-withs: [1]
