@@ -35,6 +35,7 @@ class Defaults: # The default values to use as arguments
     link_establish_timeout = 10 # arbitrary for now
     length = 1 # kilometers      # for any edge that does not have its length specified
     width = 1                    # for any edge that does not have its width specified
+    scale_length = 1
 
     p1_delay = 1
     p2_delay = 100 # p2 also has a timeout delay (args.link_establish_timeout). Overall delay in p2 is p2_delay + args.link_establish_timeout

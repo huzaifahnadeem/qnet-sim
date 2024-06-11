@@ -82,10 +82,11 @@ def get_args():
 
     # args for network set up:
     parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumInParamAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
-    parser.add_argument('--network_file', required=False, default=config.network_file, type=str, help=f'The network topology will be read from this file if --network=file . The file should be a yaml file representing a dict of dict format of networkx. The network is created exactly as in the file i.e. no default lengths/widths.')
+    parser.add_argument('--network_file', required=False, default=config.network_file, type=str, help=f'The network topology will be read from this file if --network=file . The file should be a yaml file representing a dict of dict format of networkx. The network is created exactly as in the file i.e. no default lengths/widths with the only exception on --scale_length.')
     parser.add_argument('--grid_dim', required=False, default=config.grid_dim, type=int, help=f'The dimension of the grid topology if using --network=grid_2d. Default set to {config.grid_dim}')
     parser.add_argument('--length', required=False, default=config.length, type=int, help=f'Used for any edge that does not have its length specified. Unit = km. Default set to {config.length} km.')
     parser.add_argument('--width', required=False, default=config.width, type=int, help=f'Used for any edge that does not have its width specified. Default set to {config.width}.')
+    parser.add_argument('--scale_length', required=False, default=config.scale_length, type=int, help=f'All edges\' lengths in the network topology are multiplied by this factor. Default set to {config.scale_length}.')
 
     # args specific to SLMP:
     parser.add_argument('--single_entanglement_flow_mode', required=False, action='store_true',  help=f'If this argument used then there is only a single unique s-d pair per timeslot (e.g. to use with single entanglement flow in SLMP). The number of qubits to be sent between src and dst is dependent on the --max_sd and --min_sd arguments.')
@@ -176,6 +177,12 @@ def args_range_check(): # TODO: https://gist.github.com/dmitriykovalev/2ab1aa33a
         param = '--qc_p_loss_length'
         sign = '>= 0 and <= 1'
         limit = ""
+    elif not (globals.args.scale_length > 0):
+        raise_exception = True
+        param = '--scale_length'
+        sign = '>'
+        limit = '0'
+        
     if raise_exception:
         raise ValueError(f"The input parameter '{param}' must be {sign} {limit}.")
     

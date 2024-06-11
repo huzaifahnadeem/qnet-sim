@@ -188,6 +188,13 @@ def standardize_graph(graph):
 
     return graph_s, graph_f
 
+def apply_scale_factor(graph, scale_factor):
+    if scale_factor == 1:
+        return
+    
+    for edge in graph.edges():
+        graph.edges[edge]['length'] *= scale_factor
+
 def network_choice():
     network_choice = globals.args.network
     top = globals.NET_TOPOLOGY
@@ -216,4 +223,6 @@ def network_choice():
     else:
         raise NotImplementedError("Not implemented")
     
+    apply_scale_factor(nx_graph, globals.args.scale_length)
+
     return standardize_graph(nx_graph)
