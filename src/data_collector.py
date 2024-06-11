@@ -2,6 +2,7 @@ import json
 import uuid
 import globals
 from datetime import datetime
+from pathlib import Path
 
 class DataCollector:
     def __init__(self, ):
@@ -17,6 +18,7 @@ class DataCollector:
             'x_dist': [],
             'y_dist': [],
         }
+        Path(self._save_dir).mkdir(parents=True, exist_ok=True) # create self._save_dir if it doesnt exist
 
     def add_data(self, ts, src_name, dst_name, path, fidelity, num_eprs_used, num_eprs_created, x_dist, y_dist):
         self._data_table['time_slot'].append(ts)
