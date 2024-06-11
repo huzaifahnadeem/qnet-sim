@@ -32,8 +32,6 @@ class Network(ns_Network):
         # Note the difference: 
         # paper vs here: channels (paper) = DirectConnection (here) (each of which has 2 channels internally). Edges (paper) = A collection of connections here.
         self._create_and_add_connections()
-        
-        # TODO: log at the end of init that network has been initialized? or maybe in main somewhere
 
     def node_names(self):
         return nx.nodes(self.graph)

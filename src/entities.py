@@ -138,8 +138,6 @@ class NodeEntity(pydynaa.Entity):
         self.major_paths = None
         self.link_state = {}
         self.neighbours_link_state = {}
-        # TODO: discard connection qmem qubits from prev ts if any
-        # self.measurements = []
         self.events_msg_passing = {}
         self.swapped_nodes = []
         self.e2e_paths_sofar = []
@@ -369,7 +367,7 @@ class NodeEntity(pydynaa.Entity):
         # TODO: we dont have a direct connection to NIS right? so if we are getting this through the internet then there might be some delay (probably doesnt matter since its at the very start anyway)
         self.sd_pairs = self.nis.curr_sd_pairs
 
-        p1_delay = 1 # TODO: input param?
+        p1_delay = globals.args.p1_delay
         self._schedule_after(p1_delay, NodeEntity.p1_done_evtype)
 
     def _p2(self, _):
@@ -426,7 +424,7 @@ class NodeEntity(pydynaa.Entity):
         
         start_p2(None)
 
-        p2_delay_after_timeout = 100 # TODO: input param?
+        p2_delay_after_timeout = globals.args.p2_delay
         timeout = globals.args.link_establish_timeout
         self._schedule_after(timeout+p2_delay_after_timeout, NodeEntity.p2_done_evtype)
 
@@ -441,7 +439,6 @@ class NodeEntity(pydynaa.Entity):
 
                 # TODO: maybe. Add an option to send through the internet/NIS (larger delays, uncertain delays etc)
                 # To send directly through neighbours, create a message and send it to next neighbour in the shortest path who forwards it further. All nodes know the topology. Also, might want to add that drop any message from an earlier ts.
-                # Assuming no message drops? # TODO: would be pretty neat to add that too (more realistic)
                 
                 for k_neighbour in self.k_hop_neighbours:
                     send_through_node = self.network.get_node(k_neighbour.path_to[1]).entity
@@ -450,7 +447,6 @@ class NodeEntity(pydynaa.Entity):
                     self.send_message(send_through_node.name, msg_packet)
                 
                 # TODO: Sending to next hop on path right now. maybe an option for sending via internet/NIS or whatever should be implemented
-                # TODO: we are assuming no packet loss so we can just move on to phase 4 where we can look at message queue and save other's link states. Maybe packet losses should be added as an option?
            
             elif globals.args.alg is globals.ALGS.SLMPL:
                 # In SLMPl, only the two nodes across an edge know about the status of the local link. so nothing to do here (final link state already generated above)
@@ -464,7 +460,7 @@ class NodeEntity(pydynaa.Entity):
         
         start_p3(None)
 
-        p3_delay = 100 # TODO: input param? # this delay includes the delay for p1, and p2
+        p3_delay = globals.args.p3_delay
         self._schedule_after(p3_delay, NodeEntity.p3_done_evtype)
 
     def _p4(self, _):
@@ -571,7 +567,7 @@ class NodeEntity(pydynaa.Entity):
 
         start_p4(None)
 
-        p4_delay = 1 # TODO: input param?
+        p4_delay = globals.args.p4_delay
         self._schedule_after(p4_delay, NodeEntity.p4_done_evtype)
     
     def _store_corrections(self, msg_packet):
@@ -934,8 +930,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
 
         # schedule the event for start of the next timeslot (unless currently in the last ts):
         if self.curr_ts < globals.args.num_ts:
-            # TODO: first param of the following (== time slot length)
-            self._schedule_after(globals.args.ts_length, NIS._init_new_ts_evtype) # TODO: parameterize the length of timeslot
+            self._schedule_after(globals.args.ts_length, NIS._init_new_ts_evtype)
 
     def _this_ts_sd_pairs(self):
         return self.traffic_matrix[self.curr_ts - 1] # -1 because index 0 stores sd pairs for ts=1 and so on.

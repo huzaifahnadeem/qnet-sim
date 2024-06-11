@@ -36,6 +36,11 @@ class Defaults: # The default values to use as arguments
     length = 1 # kilometers      # for any edge that does not have its length specified
     width = 1                    # for any edge that does not have its width specified
 
+    p1_delay = 1
+    p2_delay = 100 # p2 also has a timeout delay (args.link_establish_timeout). Overall delay in p2 is p2_delay + args.link_establish_timeout
+    p3_delay = 100
+    p4_delay = 1
+
     qc_noise_model = QCHANNEL_NOISE_MODEL.none
     qc_noise_rate = 0.0
     qc_noise_is_time_independent = True
