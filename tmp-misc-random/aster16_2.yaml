@@ -1,0 +1,19 @@
+loopfor:
+    seed: 
+      range: [100, 200] # range = [a, b). alternatively, instead of a range, use 'list' for a specific list of seeds to use
+    probs:
+      p: [0.4] #, 0.4, 0.4]
+      q: [0] #, 0.1, 0]
+      iszip: true # if true then p and q are zipped and used as a (p, q) tuple. otherwise runs as two loops (one for p and a nested one for q)
+      p_isof_success: false  # the main.py tool treats p and q as probs of qubit/packet drop (i.e. case = failure), and swap failure, respectively
+      q_isof_success: false  # so, for convenience, these two 'p/q_isof_success' values can be used. If it is true then the probabilities are probs of success (and hence run.py will internally do a 1-prob). Otherwise, run.py treats them normally (probs of failure). is these 'p/q_isof_success' are not set, then assumed to be false
+static:
+    alg: SLMPg
+    one_sided_epr: ~ # for binary flag args, just set the value to null
+    num_ts: 11
+    traffic_matrix: file
+    tm_file: /home/hun13/qnet-sim/src/sample_tm_file.yaml # absolute path or path relative to run.py file
+    network: grid_2d
+    grid_dim: 19
+    qc_loss_model: fixed
+    results_dir: /home/hun13/qnet-sim/src/experiments-results/aster16_2
