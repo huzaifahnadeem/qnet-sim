@@ -1,4 +1,5 @@
 import networkx as nx
+import statistics
 
 data_directory_path = "/home/hun13/qnet-sim/src/networks-data"
 
@@ -133,7 +134,7 @@ def standardize_graph(graph):
 # surfnet = standardize_graph(_surfnet())
 
 abilene = _abilene()
-surfnet = _surfnet()
+surfnet_mg = _surfnet()
 
 abilene_lengths = {}
 for edge in abilene.edges():
@@ -141,14 +142,92 @@ for edge in abilene.edges():
     if this_len not in abilene_lengths:
         abilene_lengths[this_len] = None
 
-# surfnet_lengths = {}
-# for edge in surfnet.edges():
-#     this_len = surfnet.edges[edge]['length']
-#     if this_len not in surfnet_lengths:
-        # surfnet_lengths[this_len] = None
-
 print(list(abilene_lengths.keys()))
+print(f"max  = {max(list(abilene_lengths.keys()))}")
+print(f"min  = {min(list(abilene_lengths.keys()))}")
+print(f"mean = {sum(list(abilene_lengths.keys()))/len(list(abilene_lengths.keys()))}")
+print(f"stddev  = {statistics.stdev(list(abilene_lengths.keys()))}")
 print()
-# print(list(surfnet_lengths.keys()))
 
-temp = 1
+
+
+import matplotlib.pyplot as plt
+
+# w = 15
+# h = 15
+# plt.figure(figsize = (w, h))
+# pos = nx.spring_layout(abilene)
+# nx.draw_networkx_nodes(
+#     abilene, 
+#     pos, 
+#     nodelist = abilene.nodes(), 
+#     node_color = 'seagreen', 
+# )
+# node_labels = {}
+# for (n, ddict) in abilene.nodes(data = True):
+#     node_labels[n] = str(n)
+# nx.draw_networkx_labels(
+#     abilene,
+#     pos,
+#     labels = node_labels
+# )
+# nx.draw_networkx_edges(
+#     G = abilene, 
+#     pos = pos, 
+#     edgelist = abilene.edges(),
+# )
+# edge_lengths = nx.get_edge_attributes(abilene, "length")
+# for e in edge_lengths:
+#     edge_lengths[e] = round(edge_lengths[e], 2)
+# nx.draw_networkx_edge_labels(abilene, pos, edge_labels = edge_lengths)
+# plt.savefig('./abilene.png', format = "PNG")
+
+
+
+surfnet = nx.Graph(surfnet_mg)
+surfnet_lengths = {}
+for edge in surfnet.edges(data=True):
+    this_len = edge[2]['length']
+    if this_len not in surfnet_lengths:
+        surfnet_lengths[this_len] = None
+
+print(list(surfnet_lengths.keys()))
+print(f"max  = {max(list(surfnet_lengths.keys()))}")
+print(f"min  = {min(list(surfnet_lengths.keys()))}")
+print(f"mean = {sum(list(surfnet_lengths.keys()))/len(list(surfnet_lengths.keys()))}")
+print(f"stddev  = {statistics.stdev(list(surfnet_lengths.keys()))}")
+
+print()
+
+
+# w = 30
+# h = 30
+# plt.figure(figsize = (w, h))
+# pos = nx.kamada_kawai_layout(surfnet)
+# nx.draw_networkx_nodes(
+#     surfnet, 
+#     pos, 
+#     nodelist = surfnet.nodes(), 
+#     node_color = 'seagreen', 
+# )
+# node_labels = {}
+# for (n, ddict) in surfnet.nodes(data = True):
+#     node_labels[n] = str(n)
+# nx.draw_networkx_labels(
+#     surfnet,
+#     pos,
+#     labels = node_labels
+# )
+# nx.draw_networkx_edges(
+#     G = surfnet, 
+#     pos = pos, 
+#     edgelist = surfnet.edges(),
+# )
+# edge_lengths = nx.get_edge_attributes(surfnet, "length")
+# for e in edge_lengths:
+#     edge_lengths[e] = round(edge_lengths[e], 2)
+# nx.draw_networkx_edge_labels(surfnet, pos, edge_labels = edge_lengths)
+# plt.savefig('./surfnet.png', format = "PNG")
+
+
+# print(len(list(surfnet.nodes())))
