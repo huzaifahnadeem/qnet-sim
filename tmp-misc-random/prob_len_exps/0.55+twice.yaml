@@ -12,7 +12,8 @@ static:
     one_sided_epr: ~ # for binary flag args, just set the value to null
     num_ts: 11
     traffic_matrix: file
-    tm_file: /home/hun13/qnet-sim/src/sample_tm_file.yaml # absolute path or path relative to run.py file
+    tm_file: /home/hun13/qnet-sim/tmp-misc-random/prob_len_exps/grid_2d_19x19_varlen_p0.55_with_twice.yaml # absolute path or path relative to run.py file
     network: grid_2d
     grid_dim: 19
     qc_loss_model: fixed
+    results_dir: /home/hun13/qnet-sim/src/experiments-results/prob_len_exps/0.55+twice
