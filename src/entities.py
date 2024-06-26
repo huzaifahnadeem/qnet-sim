@@ -89,7 +89,7 @@ class NodeEntity(pydynaa.Entity):
             clabel = self.network.gen_label(self.name, n.name, of=cconn_option)
             self.connections[n.name].append(self.network.get_connection(self.name, n.name, clabel))
             # 'w' quantum connections:
-            for chan_num in range(self.network.graph[self.name][n.name][0]["width"]):
+            for chan_num in range(self.network.graph[self.name][n.name]["width"]):
                 qlabel = self.network.gen_label(self.name, n.name, of=qconn_option, num=chan_num)
                 self.connections[n.name].append(self.network.get_connection(self.name, n.name, qlabel))
 
@@ -395,7 +395,7 @@ class NodeEntity(pydynaa.Entity):
                     if self.name in [u, v]: # checking if this node is connected to this edge.
                         send_to = u if self.name == v else v
                         for c in range(num_channels):
-                            if qubit_assignment.count(send_to) < self.network.nx_graph[u][v]["width"]:
+                            if qubit_assignment.count(send_to) < self.network.graph[u][v]["width"]:
                                 # TODO: there may be a small issue with qpass p2 alg. it can assign more qubits on an edge than its width (i think this happens only for partial paths). Not sure what to do other than this if statement or spending time into that algorithm in detail.
                                 qubit_assignment.append(send_to)
             
@@ -844,7 +844,7 @@ class NodeEntity(pydynaa.Entity):
         if method == 'L1':
             return delta_x(node1, node2) + delta_y(node1, node2)
         if method == "shortest_path_length": # not in the paper. just adding it because why not
-            return nx.shortest_path_length(self.network.nx_graph, source=node1, target=node2)
+            return nx.shortest_path_length(self.network.graph, source=node1, target=node2)
 
     def _send_e2e_ready_message(self, serving_pair, path):
         # this is sent to whoever is at the start of the path. this lets that node know that it shares an e2e ebit with dst. if that node is src, it will teleport the data qubit. otherwise do nothing.
@@ -979,7 +979,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
             for n2 in self.network.node_names():
                 if n1 == n2:
                     continue
-                self.offline_paths[(n1, n2)] = k_shortest_paths(self.network.nx_graph, source=n1, target=n2, k=k, weight=weight_fn)
+                self.offline_paths[(n1, n2)] = k_shortest_paths(self.network.graph, source=n1, target=n2, k=k, weight=weight_fn)
 
     def _run_qpass_p2_alg(self):
         # writing the following function to match the alg1 in the paper as closely as possible
@@ -1013,7 +1013,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
 
                 w = float("inf")
                 for u, v in edges_of_path(p):
-                    width_original = G.nx_graph[u][v]["width"]
+                    width_original = G.graph[u][v]["width"]
                     width_after_removing_LP = float("inf") if L_P is None else w_after_LP(L_P, u, v, width_original)
                     width_effective = min([width_original, T_Q[u], T_Q[v], width_after_removing_LP])
                     if width_effective < w:
@@ -1031,7 +1031,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
                 elif globals.args.yen_metric is globals.YEN_METRICS.SUMDIST:
                     m = 0
                     for u, v in edges_of_path(p):
-                        m += G.nx_graph[u][v]["length"]
+                        m += G.graph[u][v]["length"]
                 elif globals.args.yen_metric is globals.YEN_METRICS.CR:
                     raise NotImplementedError("CR metric not implemented yet") # TODO
                 elif globals.args.yen_metric is globals.YEN_METRICS.BOTCAP:
