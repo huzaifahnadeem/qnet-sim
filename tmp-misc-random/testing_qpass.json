@@ -1,0 +1,9 @@
+{
+  "seed": 0,
+  "single_entanglement_flow_mode": true,
+  "qc_loss_model": "none",
+  "num_ts": 5,
+  "network": "grid",
+  "grid_dim": 5,
+  "alg": "QPASS"
+}

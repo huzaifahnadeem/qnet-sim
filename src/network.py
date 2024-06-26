@@ -23,8 +23,7 @@ class Node(ns_Node):
 class Network(ns_Network):
     def __init__(self, name=globals.args.network.value) -> None:
         # network_choice returns a full multigraph and a simplified graph (also of type multigraph)
-        self.graph, self.graph_full = network_choice() # used for yen's algorithm and for visualizing the network situation (<- TODO this second part)
-        self.nx_graph = self.graph # TODO: this is here temporarily so avoid any issues with references to the old var name "self.nx_graph". remove this when all references are changed to either self.graph_full or self.graph
+        self.graph = network_choice() # used for yen's algorithm and for visualizing the network situation (<- TODO this second part)
         
         super().__init__(name=name)
         super().add_nodes(self._create_nodes())

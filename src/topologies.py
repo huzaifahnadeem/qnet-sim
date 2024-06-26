@@ -154,14 +154,12 @@ def _erdos_renyi_50_005():
 def standardize_graph(graph):
     '''
     This function is supposed to convert the different network topologies into a standard kind of /a graph/s to be used later. 
-    This function will return two graphs. 1) a multigraph which is the full graph to run networkx's algorithms on. 2) a simpler multigraph which follows the QPASS paper's network model. This will condense parallel edges of equal length into a single edge of equivalent width. Parallel edges of different lengths remain separate and are not counted as another channel but rather a completely separate connection.
-    Note that we are going with a MultiGraph and not a MultiDiGraph. The latter is a directed graph while the former is not.
+    This function will return an undirected graph with 'width' and 'length' properties for edges and any other property that may be already exist for the edge are removed. No changed made to nodes. # TODO: we moved away from multigraph. multigraph is the most general option so probably good idea to use that at some point.
+    For multigraphs, if multiple edges between a pair of nodes exist, the shortest one is used and rest removed from graph.
     '''
-    # the full multigraph, and the simplified multigraph:
-    graph_f = nx.MultiGraph()
-    graph_s = nx.MultiGraph()
-    graph_f.add_nodes_from(graph)
-    graph_s.add_nodes_from(graph)
+    
+    std_graph = nx.Graph()
+    std_graph.add_nodes_from(graph)
 
     if (type(graph) is nx.Graph) or (type(graph) is nx.DiGraph):
         if type(graph) is nx.DiGraph:
@@ -169,24 +167,23 @@ def standardize_graph(graph):
             edges = [e for e in undir_graph.edges.data()]
         else:
             edges = [e for e in graph.edges.data()]
-        graph_s.add_edges_from(edges)
+        std_graph.add_edges_from(edges)
         for e in edges:
-            w = e[2]['width']
-            for _ in range(w):
-                graph_f.add_edges_from([e])
+            edge_data = e[2]
+            for k in edge_data.keys():
+                if k not in ['width', 'length']:
+                    edge_data.pop(k, None)
+            
     elif type(graph) is nx.MultiGraph:  # if it is a multigraph
         edges = sorted(graph.edges(data=True), key=lambda edge: edge[2].get('length', None)) # doing this so that edges (of diff lengths) between the same u-v nodes are grouped together. might be useful to have this later.
-        graph_f.add_edges_from(edges)
         added_already = []
         for e in edges:
-            if [e[0], e[1], e[2]['length']] not in added_already: # only add as a new edge if there is a new edge between u-v or is of a different length than previous ones.
-                graph_s.add_edges_from([e])
-                graph_s.edges[e[0]][e[1]]['width'] = 1
-                added_already.append([e[0], e[1], e[2]['length']])
-            else:
-                graph_s.edges[e[0]][e[1]]['width'] += 1
+            if [e[0], e[1]] not in added_already: # dont add another edge between a pair of nodes if already added (can happen for diff lengths)
+                std_graph.add_edges_from([e])
+                std_graph.edges[e[0]][e[1]]['width'] = e[2]['width']
+                added_already.append([e[0], e[1]])
 
-    return graph_s, graph_f
+    return std_graph
 
 def apply_scale_factor(graph, scale_factor):
     if scale_factor == 1:

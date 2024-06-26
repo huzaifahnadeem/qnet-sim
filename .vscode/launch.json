@@ -10,7 +10,6 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            // "args": ["--runfile=/home/hun13/qnet-sim/src/runfiles/sample_run.yaml"]
         },
         {
             "name": "Python: src/main.py",
@@ -19,6 +18,7 @@
             "program": "${workspaceFolder}/src/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
+            "args": ["--seed=0", "--single_entanglement_flow_mode",  "--qc_loss_model=none", "--num_ts=5", "--network=grid_2d", "--grid_dim=5",  "--alg=QPASS"]
             // "args": ["--network=file", "--network_file=/home/hun13/qnet-sim/src/networks-data/grid_2d_19x19_varlen_0.5_1.0.yaml"]
             // "args": ["--one_sided_epr"]
             // "args": ["--two_sided_epr"]
