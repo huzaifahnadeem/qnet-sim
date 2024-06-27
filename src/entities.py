@@ -939,7 +939,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
         if globals.args.qpass_yen_file is not None:
             import pickle
             yenfile = open(globals.args.qpass_yen_file, 'rb') # binary mode
-            self.offline_paths = pickle.loads(yenfile)
+            self.offline_paths = pickle.load(yenfile)
             yenfile.close()
             return
         
