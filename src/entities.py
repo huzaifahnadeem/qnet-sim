@@ -435,7 +435,7 @@ class NodeEntity(pydynaa.Entity):
             # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p3 start.")
             self._gen_final_link_state() # see which ebits to use. discard one of the ebits where both side were success
             
-            if globals.args.alg is globals.ALGS.SLMPG: # in SLMPl only the two nodes across the link know about that link status. so no sharing.
+            if (globals.args.alg is globals.ALGS.SLMPG) or (globals.args.alg is globals.ALGS.QPASS): # in SLMPl only the two nodes across the link know about that link status. so no sharing.
 
                 # TODO: maybe. Add an option to send through the internet/NIS (larger delays, uncertain delays etc)
                 # To send directly through neighbours, create a message and send it to next neighbour in the shortest path who forwards it further. All nodes know the topology. Also, might want to add that drop any message from an earlier ts.
@@ -452,8 +452,8 @@ class NodeEntity(pydynaa.Entity):
                 # In SLMPl, only the two nodes across an edge know about the status of the local link. so nothing to do here (final link state already generated above)
                 pass
 
-            elif globals.args.alg is globals.ALGS.QPASS:
-                pass # TODO: will probably be mostly the same as SLMPG. use that if statement or write new code if changes needed.
+            # elif globals.args.alg is globals.ALGS.QPASS:
+            #     pass # TODO: will probably be mostly the same as SLMPG. use that if statement or write new code if changes needed.
 
             elif globals.args.alg is globals.ALGS.QCAST:
                 pass # TODO: will probably be mostly the same as SLMPG. use that if statement or write new code if changes needed.
@@ -561,6 +561,24 @@ class NodeEntity(pydynaa.Entity):
                                     break # we get there when are no more pairs to be made
 
             elif globals.args.alg is globals.ALGS.QPASS:
+                # QPASS P4 alg:
+                # Inputs: S-D pairs from P1, Major Path list from P2, Recovery Path list from P2, k-hop link states of this node from P3
+                # 
+                # for path in major_paths:
+                #   h = len(path) - 1 # num of hops in the path
+                #   k = globals.args.p3_hop
+                #   num_of_segments = utils.ceildiv(h, k+1)
+                #   len_of_a_segment = k+1
+                #   segments = calc_segments(path)
+                #   for s in segments:
+                #       for node in s:
+                #           if node != self.name:
+                #               continue
+                #           seg_start_node = s[0]
+                #           seg_end_node = s[-1]
+                #           connect(seg_start_node, seg_end_node, s, link_state)
+                #
+                #
                 pass
             elif globals.args.alg is globals.ALGS.QCAST:
                 pass

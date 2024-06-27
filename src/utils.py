@@ -90,3 +90,8 @@ def rand_success(p_of_fail):
         successful = False
 
     return successful
+
+def ceildiv(a, b):
+    # https://stackoverflow.com/questions/14822184/is-there-a-ceiling-equivalent-of-operator-in-python
+    # math.floor can apparently "quietly produce incorrect results, because it introduces floating-point error" according to the link above so just using this fn where needed
+    return -(a // -b)
