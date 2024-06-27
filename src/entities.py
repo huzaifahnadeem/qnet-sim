@@ -936,6 +936,11 @@ class NIS(pydynaa.Entity): # The Network Information Server
         return self.traffic_matrix[self.curr_ts - 1] # -1 because index 0 stores sd pairs for ts=1 and so on.
     
     def _run_yens_alg(self):
+        if globals.args.qpass_yen_file is not None:
+            import pickle
+            self.offline_paths = pickle.loads(globals.args.qpass_yen_file)
+            return
+        
         # nx.shortest_simple_paths function uses yen's algorithm as per the the reference on networkx' website: https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.simple_paths.shortest_simple_paths.html
         # This sub function is also adapted from the same source:
         
@@ -980,6 +985,15 @@ class NIS(pydynaa.Entity): # The Network Information Server
                 if n1 == n2:
                     continue
                 self.offline_paths[(n1, n2)] = k_shortest_paths(self.network.graph, source=n1, target=n2, k=k, weight=weight_fn)
+
+        # # Intentionally commented this part. But may uncomment to save results into a pkl file for later use:
+        # import pickle
+        # data = self.offline_paths
+        # pklfile_name = '/home/hun13/qnet-sim/tmp-misc-random/yenfile_5x5grid_ndefault.pkl'
+        # pklfile = open(pklfile_name, 'ab') # binary mode
+        # pickle.dump(data, pklfile)                    
+        # pklfile.close()
+        # print(f'yen file created at: {pklfile_name}')
 
     def _run_qpass_p2_alg(self):
         # writing the following function to match the alg1 in the paper as closely as possible

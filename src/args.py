@@ -97,6 +97,7 @@ def get_args():
     parser.add_argument('--yen_n', required=False, default=config.yen_n, type=int, help=f'The starting number of offline paths to compute with yen\'s algorithm. Default set to {config.yen_n}.')
     parser.add_argument('--yen_metric', required=False, default=config.yen_metric, type=globals.YEN_METRICS, action=globals.EnumInParamAction, help=f'The metric to use to compute path length in yen\'s algorithm. Default set to "{config.yen_metric.value}".')
     parser.add_argument('--p3_hop', required=False, default=config.p3_hop, type=int, help=f'In phase 3 exchange link state to this many hop away neighbours. A value of -1 is used to mean infinity. Default set to {config.p3_hop}.')
+    parser.add_argument('--qpass_yen_file', required=False, default=None, type=str, help=f'Use cautiously. Ignored if not used with QPASS. This parameter can be used to pass a pickle file that contains the results after running Yen\'s algorithm on a particular network topology and with a given --yen_n. This is meant to be used for debugging or repeated runs on a known network such as for experiments. If a wrong file or file with unexpected paths, nodes, etc given then unexpected behaviour such as crashes may occur.')
 
     # misc. args:
     parser.add_argument('--alg', required=False, default=config.algorithm, type=globals.ALGS, action=globals.EnumInParamAction, help=f'Choice between SLMPg, SLMPl, QPASS, and QCAST. Default set to {config.algorithm}.')

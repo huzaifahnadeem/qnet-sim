@@ -18,7 +18,7 @@
             "program": "${workspaceFolder}/src/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--seed=0", "--single_entanglement_flow_mode",  "--qc_loss_model=none", "--num_ts=5", "--network=grid_2d", "--grid_dim=5",  "--alg=QPASS"]
+            "args": ["--seed=0", "--one_sided_epr",  "--qc_loss_model=none", "--num_ts=5", "--network=grid_2d", "--grid_dim=5",  "--alg=QPASS", "--qpass_yen_file=/home/hun13/qnet-sim/tmp-misc-random/yenfile_5x5grid_ndefault.pkl"]
             // "args": ["--network=file", "--network_file=/home/hun13/qnet-sim/src/networks-data/grid_2d_19x19_varlen_0.5_1.0.yaml"]
             // "args": ["--one_sided_epr"]
             // "args": ["--two_sided_epr"]
