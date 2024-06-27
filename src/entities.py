@@ -938,7 +938,9 @@ class NIS(pydynaa.Entity): # The Network Information Server
     def _run_yens_alg(self):
         if globals.args.qpass_yen_file is not None:
             import pickle
-            self.offline_paths = pickle.loads(globals.args.qpass_yen_file)
+            yenfile = open(globals.args.qpass_yen_file, 'rb') # binary mode
+            self.offline_paths = pickle.loads(yenfile)
+            yenfile.close()
             return
         
         # nx.shortest_simple_paths function uses yen's algorithm as per the the reference on networkx' website: https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.simple_paths.shortest_simple_paths.html
