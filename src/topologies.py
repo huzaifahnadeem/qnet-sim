@@ -42,6 +42,8 @@ def _grid_2d(dim=globals.args.grid_dim):
         map[n] = str(n)
     G = nx.relabel_nodes(G, map)
 
+    # G_multigraph = nx.MultiGraph(G)
+    # return G_multigraph
     return G
 
 def _teaver_graph_common(data_directory=data_directory_path):

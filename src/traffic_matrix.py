@@ -33,13 +33,13 @@ def random_traffic_matrix(network):
         src_set = globals.args.src_set if src_set_is_specified else node_names
         dst_set = globals.args.dst_set if dst_set_is_specified else node_names
         sd_combos = [(x, y) for x in src_set for y in dst_set]
-        if not is_grid_topology:
+        if not is_grid_topology: # TODO: currently only supporting distance selection for grids.
             combo_weights = [1 for _ in sd_combos]
         else:
             combo_weights = [int((utils.grid_x_dist(u, v) in xdist_range) and (utils.grid_y_dist(u, v) in ydist_range)) for u, v in sd_combos] # 1 if in xdist_range and in ydist_range. 0 otherwise
         num_sds_this_ts = random.randint(min_num_sds, max_num_sds)
         
-        if is_single_entanglement_flow_mode:
+        if is_single_entanglement_flow_mode: # TODO: later on if we add the third option where the edge generates the entanglement, add that
             sd = random.choices(sd_combos, weights=combo_weights, k=1)[0]
             src_i = random.choices([0, 1], k=1)[0] 
             dst_i = 1 if src_i == 0 else 0

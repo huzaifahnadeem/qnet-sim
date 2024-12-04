@@ -3,3 +3,4 @@ __pycache__
 src/experiments-results/*
 src/runfiles/*
 !src/runfiles/sample_run.yaml
+qnet-venv

@@ -800,7 +800,7 @@ class NodeEntity(pydynaa.Entity):
             for e in edges_list:
                 if e not in already_added:
                     already_added.append(e)
-                    links_graph.add_edge(e[0], e[1], channel_num=e[2], length=og_graph[e[0]][e[1]][0]['length'])
+                    links_graph.add_edge(e[0], e[1], channel_num=e[2], length=og_graph[e[0]][e[1]]['length']) # TODO: if we change everything to multigraph then this might have to be adjusted
         return links_graph
 
     def _set_event_handler_params(self, ev_type, ev_src, params):
