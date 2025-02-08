@@ -1,9 +1,9 @@
 import netsquid as ns
 import random 
 import numpy
-import globals
-import args
-import quantum
+from src import globals
+from src import args
+from src import quantum
 import importlib
 import os
 
@@ -12,7 +12,7 @@ def apply_args() -> None:
     if globals.args.use_quantinf_data_state:
         quantum.oct2py = importlib.import_module("oct2py", package=None) # oct2py allows calling octave/matlab functions in python (octave needs to be installed in the system to use)
         quantum.octave = quantum.oct2py.octave
-        lib_path = f'{os.path.dirname(os.path.realpath(__file__))}/lib/quantinf/'
+        lib_path = f'{os.path.dirname(os.path.realpath(__file__))}/../lib/quantinf/'
         quantum.octave.addpath(lib_path)
 
     # setting seeds:

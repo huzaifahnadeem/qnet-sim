@@ -1,6 +1,6 @@
 import random
-import utils
-import globals
+from src import utils
+from src import globals
 import yaml
 
 def random_traffic_matrix(network):
@@ -57,7 +57,7 @@ def random_traffic_matrix(network):
     return tm
 
 def tm_from_file(file_name):
-    # sample file: src/sample_tm_file.yaml
+    # sample file: ../tm-files/sample_tm_file.yaml
 
     num_of_ts = globals.args.num_ts
     tm = [[] for _ in range(num_of_ts)]

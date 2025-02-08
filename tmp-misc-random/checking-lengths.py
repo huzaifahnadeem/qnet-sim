@@ -2,8 +2,8 @@ import yaml
 import networkx as nx
 from numpy import power
 
-nw_file = "/home/hun13/qnet-sim/src/networks-data/grid_2d_19x19_varlen_0.5_1.0.yaml"
-tm_file = "/home/hun13/qnet-sim/src/sample_tm_file.yaml"
+nw_file = "../networks-data/grid_2d_19x19_varlen_0.5_1.0.yaml"
+tm_file = "../tm-files/sample_tm_file.yaml"
 
 def length_prob_loss(p_loss_init, p_loss_length, length_km):
     prob_loss = 1 - (1 - p_loss_init) * power(10, - length_km * p_loss_length / 10)

@@ -10,10 +10,10 @@ import networkx as nx
 import netsquid as ns
 
 
-import globals
-from topologies import network_choice
-from entities import NodeEntity
-import quantum
+from src import globals
+from src.topologies import network_choice
+from src.entities import NodeEntity
+from src import quantum
 
 class Node(ns_Node):
     def __init__(self, name, ID=None, qmemory=None, port_names=None, node_entity=None) -> None:

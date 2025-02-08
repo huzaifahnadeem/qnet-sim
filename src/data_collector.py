@@ -1,6 +1,6 @@
 import json
 import uuid
-import globals
+from src import globals
 from datetime import datetime
 from pathlib import Path
 

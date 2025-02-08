@@ -24,7 +24,7 @@ def grid_y_dist(pair):
 
 
 def tm_from_file(file_name):
-    # sample file: src/sample_tm_file.yaml
+    # sample file: ../tm-files/sample_tm_file.yaml
 
     num_of_ts = 11
     tm = [[] for _ in range(num_of_ts)]

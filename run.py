@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+'''
+main.py file is the 'main' file from where you should run the tool.
+This program is a tool meant to run simulations/experiments. 
+This tool just runs main.py multiple times with different parameters as provided in the --runfile.
+'''
+
 import subprocess
 import multiprocessing
 import argparse

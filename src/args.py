@@ -1,7 +1,7 @@
 import argparse
-import globals
+from src import globals
 import json
-import utils
+from src import utils
 import sys
 
 def get_args():

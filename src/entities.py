@@ -3,18 +3,18 @@ This file is supposed to contain classes for the entities in the network which i
 '''
 
 import pydynaa
-import globals
+from src import globals
 import random 
 import networkx as nx
 from queue import PriorityQueue
 import netsquid as ns
 import copy
 # from functools import reduce
-import quantum
+from src import quantum
 from math import sqrt
-import utils
-import data_collector
-import traffic_matrix
+from src import utils
+from src import data_collector
+from src import traffic_matrix
 
 # TODO: make new files for each alg and put functions specific to them there to make things neater. Probably a good idea to use protocol class too while we are at it
 

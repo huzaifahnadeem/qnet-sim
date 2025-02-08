@@ -1,11 +1,11 @@
 
-from _enums import *
+from src._enums import *
 import os
 
 # TODO: maybe have categories (as subclasses) for the variables?
 
 class Defaults: # The default values to use as arguments
-    results_dir = f'{os.path.dirname(os.path.realpath(__file__))}/experiments-results/'
+    results_dir = f'{os.path.dirname(os.path.realpath(__file__))}/../experiments-results/'
 
     traffic_matrix = TRAFFIC_MATRIX_CHOICES.random
     tm_file = None

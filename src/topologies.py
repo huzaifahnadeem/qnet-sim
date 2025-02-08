@@ -1,12 +1,12 @@
 '''
 This file contains the functions to import certain network topologies from saved data files on the disk as well as functions and hard-coded dictionaries that specify network topologies.
 '''
-import globals
+from src import globals
 import networkx as nx
 import os 
 import yaml
 
-data_directory_path = f'{os.path.dirname(os.path.realpath(__file__))}/networks-data'
+data_directory_path = f'{os.path.dirname(os.path.realpath(__file__))}/../networks-data'
 default_length = globals.args.length
 default_width = globals.args.width
 

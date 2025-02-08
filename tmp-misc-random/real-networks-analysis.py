@@ -1,7 +1,7 @@
 import networkx as nx
 import statistics
 
-data_directory_path = "/home/hun13/qnet-sim/src/networks-data"
+data_directory_path = "../networks-data"
 
 default_width = 1
 

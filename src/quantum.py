@@ -2,8 +2,8 @@ import netsquid as ns
 import random
 from numpy import pi, power
 import math
-import utils
-import globals
+from src import utils
+from src import globals
 
 # oct2py allows calling octave/matlab functions in python (octave needs to be installed in the system to use)
 oct2py = None # placeholder variable for the reference to the library.
@@ -12,7 +12,7 @@ octave = None  # placeholder variable for the reference to the this module. impo
 # need to install octave and oct2py first.
 # oct2py: https://pypi.org/project/oct2py/
 # octave: https://wiki.octave.org/Octave_for_GNU/Linux
-# only need to use octave if we want to use the quantinf package (./lib/quantinf/) from https://www.dr-qubit.org/matlab.html
+# only need to use octave if we want to use the quantinf package (../lib/quantinf/) from https://www.dr-qubit.org/matlab.html
 # Note: there maybe be an issue with oct2py/io.py file line 376. it does not import spmatrix from scipy but adding "from scipy.sparse import spmatrix" before this line or at the top of file fixes the issue
 
 # possible states that the data qubit can start in (will apply some combination of gates later) (if --dont_use_quantinf_data_state selected)
