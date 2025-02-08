@@ -1,9 +1,9 @@
 # import globals
-from entities import NIS
+from src.entities import NIS
 import netsquid as ns
 
 def setup():
-    import setup
+    from src import setup
     
     setup.get_args()
     setup.apply_args()
@@ -11,7 +11,7 @@ def setup():
 def main() -> None:
     setup() 
     
-    from network import Network # this has to be here since it needs to be imported after set up sets some things up
+    from src.network import Network # this has to be here since it needs to be imported after set up sets some things up
     # create network object. (entities are part of each node property in the network object)
     nw = Network()
     node_names = [n for n in nw.node_names()]
