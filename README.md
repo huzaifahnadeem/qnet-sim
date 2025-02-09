@@ -38,3 +38,6 @@ The reason why we need to install Netsquid after requirements.txt file is that N
 
 ## Credits:
 The quantinf package ( ./lib/quantinf ) is from: https://www.dr-qubit.org/matlab.html
+
+## Assumptions:
+- Assumed that the network topology is not multigraphed and edges are bidirectional. But we can have parallel edges of the same length and are all identical w.r.t to the properties. Internally I just process these as a 'width' property for the edge.

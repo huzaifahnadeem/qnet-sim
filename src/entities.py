@@ -16,7 +16,7 @@ from src import utils
 from src import data_collector
 from src import traffic_matrix
 
-# TODO: make new files for each alg and put functions specific to them there to make things neater. Probably a good idea to use protocol class too while we are at it
+# TODO Probably a good idea to use protocol class for the algorithms maybe
 
 class K_Hop_Neighbour_Node:
     # this class, i think, should be in network.py but that causes some circular import issue. So, putting it here for now.
