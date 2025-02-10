@@ -86,7 +86,7 @@ def get_args():
     parser.add_argument('--grid_dim', required=False, default=config.grid_dim, type=int, help=f'The dimension of the grid topology if using --network=grid_2d. Default set to {config.grid_dim}')
     parser.add_argument('--length', required=False, default=config.length, type=int, help=f'Used for any edge that does not have its length specified. Unit = km. Default set to {config.length} km.')
     parser.add_argument('--width', required=False, default=config.width, type=int, help=f'Used for any edge that does not have its width specified. Default set to {config.width}.')
-    parser.add_argument('--scale_length', required=False, default=config.scale_length, type=int, help=f'All edges\' lengths in the network topology are multiplied by this factor. Default set to {config.scale_length}.')
+    parser.add_argument('--scale_length', required=False, default=config.scale_length, type=float, help=f'All edges\' lengths in the network topology are multiplied by this factor. Default set to {config.scale_length}.')
 
     # args specific to SLMP:
     parser.add_argument('--single_entanglement_flow_mode', required=False, action='store_true',  help=f'If this argument used then there is only a single unique s-d pair per timeslot (e.g. to use with single entanglement flow in SLMP). The number of qubits to be sent between src and dst is dependent on the --max_sd and --min_sd arguments.')

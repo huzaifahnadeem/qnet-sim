@@ -24,17 +24,11 @@ def _from_file():
     
     return G
 
-def _grid_2d(dim=globals.args.grid_dim):
-    l = default_length
-    w = default_width if default_width > 0 else 1
+def _grid_2d(dim: int = globals.args.grid_dim):
+    l: int = default_length
+    w: int = default_width if default_width > 0 else 1
     
     G = nx.grid_2d_graph(dim, dim)
-
-    # set lengths and widths of the edges:
-    for e in G.edges(data=True):
-        # dicts are mutable to this will reflect in the graph object too:
-        e[2]['length'] = l
-        e[2]['width'] = w
 
     # nx.grid_2d_graph creates node labels as tuples which causes type issues later on. so convert the label (tuple) into a string:
     map = {}
@@ -42,8 +36,13 @@ def _grid_2d(dim=globals.args.grid_dim):
         map[n] = str(n)
     G = nx.relabel_nodes(G, map)
 
-    # G_multigraph = nx.MultiGraph(G)
-    # return G_multigraph
+    # set lengths and widths of the edges:
+    edges = G.edges(data=True)
+    for u, v, data in edges:
+        # dicts are mutable to this will reflect in the graph object too:
+        data['length'] = l
+        data['width'] = w
+
     return G
 
 def _teaver_graph_common(data_directory=data_directory_path):
@@ -59,7 +58,9 @@ def _teaver_graph_common(data_directory=data_directory_path):
     edges_data = [line.split() for line in edges_data]
     edges_data = [x for x in edges_data if x != []]
     
-    G = nx.DiGraph() # both ATT and IBM topologies seem to be digraphs but edges from both directions seem to be the identical for every pair of nodes.
+    # both ATT and IBM topologies seem to be digraphs but edges from both directions seem to be the identical for every pair of nodes.
+    # so for that reason and also because we assume that the graphs are undirected, we dont make it into a digraph
+    G = nx.Graph() 
 
     for node in nodes_data[1:]:
         G.add_node(node)
@@ -83,7 +84,7 @@ def _ibm():
 
 def _abilene(): # make_undirected is true by default. if this is true then the this directed graph is converted to an undirected graph. Directed graphs will definitely cause issues without significant changes):
     ### Abilene
-    from utils import latitude_longitude_distance
+    from src.utils import latitude_longitude_distance
 
     with open(f'{data_directory_path}/Abilene/topo-2003-04-10.txt') as file:
             data = [line.rstrip() for line in file]
@@ -91,7 +92,9 @@ def _abilene(): # make_undirected is true by default. if this is true then the t
     nodes_data = data[2:14]
     edges_data = data[18:]
 
-    abilene = nx.DiGraph() # seems like this graph is supposed to be a directed graph.
+    # seems like this graph is supposed to be a directed graph.
+    # but we assume that graphs are not directed graphs to make it an undirected graph
+    abilene = nx.Graph() 
 
     # add nodes from nodes_data
     for name, city, latitude, longitude in nodes_data:
@@ -109,7 +112,9 @@ def _abilene(): # make_undirected is true by default. if this is true then the t
         dst_lon = abilene.nodes[dst_node]['longitude']
         length = latitude_longitude_distance(src_lat, dst_lat, src_lon, dst_lon) # calculating length of edge using the nodes' latitute and longitude
         if length == 0:
-            length = 0.1 # sometimes src and dst are at the same lat/long. in those cases still add a small length so its not 0 (TODO: does it make sense to have length 0? if so leave as 0)
+            length = default_length # sometimes src and dst are at the same lat/long. in those cases still use default length (TODO: does it make sense to have length 0? if so leave as 0)
+            # default length is 1. So for lat-lon distance, it would be 1km which seems fair for 2 nodes in the same city
+        length = round(length, 2) # round to 2 decimal places because otherwise there are a lot of decimal places
         w = default_width if default_width > 0 else 1
         abilene.add_edge(src_node, dst_node, capacity=capacity_kbps, ospf_weight=ospf_weight, length=length, width=w) # added length and width for each edge. others are from the data file
 
@@ -117,7 +122,7 @@ def _abilene(): # make_undirected is true by default. if this is true then the t
 
 def _surfnet(): # make_undirected is true by default. if this is true then this multigraph is converted to an undirected graph. Directed graphs will definitely cause issues without significant changes):):
     ### SURFnet
-    from utils import latitude_longitude_distance
+    from src.utils import latitude_longitude_distance
 
     # both gml and graphml are working but graphml seems to provide a slightly easier to read graph (e.g. it has both labels and ids for nodes but in gml only labels are used as ids, etc)
     # surfnet = nx.read_gml(f'{data_directory_path}/SURFnet/Surfnet.gml')
@@ -133,66 +138,76 @@ def _surfnet(): # make_undirected is true by default. if this is true then this 
         v_lon = surfnet.nodes[v]['Longitude']
         length = latitude_longitude_distance(u_lat, v_lat, u_lon, v_lon) # calculating length of edge using the nodes' latitute and longitude
         if length == 0:
-            length = 0.1 # sometimes src and dst are at the same lat/long. in those cases still add a small length so its not 0 (TODO: does it make sense to have length 0? if so leave as 0)
-
+            length = default_length # sometimes src and dst are at the same lat/long. in those cases still use default length (TODO: does it make sense to have length 0? if so leave as 0)
+            # default length is 1. So for lat-lon distance, it would be 1km which seems fair for 2 nodes in the same city
+        length = round(length, 2) # round to 2 decimal places because otherwise there are a lot of decimal places
         e[2]['length'] = length # dicts are mutable to this will reflect in the graph object too
         w = default_width if default_width > 0 else 1
         e[2]['width'] = w
 
-    return surfnet
+    # we assume that graphs are not directed graphs so make it an undirected graph
+    surfnet_undirected_graph = nx.Graph(surfnet)
+    return surfnet_undirected_graph
 
 def _erdos_renyi_50_01():
     ### Erdos Renyi G(50, 0.1)
-    g = nx.erdos_renyi_graph(50, 0.1)
+    g = nx.erdos_renyi_graph(50, 0.1) # TODO: graph seed
 
-    return g # TODO: check if it is directed or undirected. convert if directed
+    return g
 
 def _erdos_renyi_50_005():
     ### Erdos Renyi G(50, 0.05)
-    g = nx.erdos_renyi_graph(50, 0.05)
+    g = nx.erdos_renyi_graph(50, 0.05) # TODO: graph seed
 
-    return g # TODO: check if it is directed or undirected. convert if directed
+    return g
 
-def standardize_graph(graph):
+def standardize_graph(graph: nx.Graph):
     '''
     This function is supposed to convert the different network topologies into a standard kind of /a graph/s to be used later. 
-    This function will return an undirected graph with 'width' and 'length' properties for edges and any other property that may be already exist for the edge are removed. No changed made to nodes. # TODO: we moved away from multigraph. multigraph is the most general option so probably good idea to use that at some point.
-    For multigraphs, if multiple edges between a pair of nodes exist, the shortest one is used and rest removed from graph.
+    This function will return an undirected graph with 'width' and 'length' properties for edges and any other property that may already exist for the edge are removed. 
+    If there is no property for 'width' and/or 'length'. The default value is set.
+    For nodes, all properties are deleted. It also relabels nodes if a property 'ID' exists already then that is used for this, otherwise 'name' is used. If neighther are there then it doesnt relabel it. Note that labels are unique and can be used as IDs
     '''
     
-    std_graph = nx.Graph()
-    std_graph.add_nodes_from(graph)
-
-    if (type(graph) is nx.Graph) or (type(graph) is nx.DiGraph):
-        if type(graph) is nx.DiGraph:
-            undir_graph = graph.to_undirected()
-            edges = [e for e in undir_graph.edges.data()]
+    nodes = graph.nodes(data=True)
+    edges = graph.edges(data=True)
+    # any changes to the objects above should reflect in the original graph object
+    
+    # update nodes:
+    label_mapping = {}
+    for n, data in nodes:
+        if 'ID' in nodes[n].keys():
+            label_mapping[n] = data['ID']
+        elif 'name' in nodes[n].keys():
+            label_mapping[n] = data['name']
         else:
-            edges = [e for e in graph.edges.data()]
-        std_graph.add_edges_from(edges)
-        for e in edges:
-            edge_data = e[2]
-            for k in edge_data.keys():
-                if k not in ['width', 'length']:
-                    edge_data.pop(k, None)
-            
-    elif type(graph) is nx.MultiGraph:  # if it is a multigraph
-        edges = sorted(graph.edges(data=True), key=lambda edge: edge[2].get('length', None)) # doing this so that edges (of diff lengths) between the same u-v nodes are grouped together. might be useful to have this later.
-        added_already = []
-        for e in edges:
-            if [e[0], e[1]] not in added_already: # dont add another edge between a pair of nodes if already added (can happen for diff lengths)
-                std_graph.add_edges_from([e])
-                std_graph.edges[e[0]][e[1]]['width'] = e[2]['width']
-                added_already.append([e[0], e[1]])
+            label_mapping[n] = n
+        
+        for k in list(nodes[n].keys()):
+            del data[k]
+    nx.relabel_nodes(graph, label_mapping, copy=False)
 
-    return std_graph
+    # update edges:
+    for u, v, data in edges:
+        for k in list(data.keys()):
+            if k in ['length', 'width']:
+                continue
+            del data[k]
 
-def apply_scale_factor(graph, scale_factor):
+        # set lengths and widths of the edges, if they dont exist:
+        if 'length' not in data.keys():
+            data['length'] = default_length
+        if 'width' not in data.keys():
+            w: int = default_width if default_width > 0 else 1
+            data['width'] = w
+
+def apply_scale_factor(graph: nx.Graph, scale_factor: float):
     if scale_factor == 1:
         return
     
-    for edge in graph.edges():
-        graph.edges[edge]['length'] *= scale_factor
+    edges = graph.edges(data=True)
+    for u, v, data in edges:
+        data['length'] *= scale_factor
 
 def network_choice():
     network_choice = globals.args.network
@@ -222,6 +237,9 @@ def network_choice():
     else:
         raise NotImplementedError("Not implemented")
     
-    apply_scale_factor(nx_graph, globals.args.scale_length)
+    assert (graph_type := type(nx_graph)) is nx.Graph, f"We assume the network topology will be an undirected graph without self loops. The graph generated from the topology is of type '{graph_type}'."
+    assert (num_self_loops := nx.number_of_selfloops(nx_graph)) == 0, f"We assume the network topology will be an undirected graph without self loops. The graph generated from the topology has {num_self_loops} self-loops."
 
-    return standardize_graph(nx_graph)
+    apply_scale_factor(nx_graph, globals.args.scale_length)
+    standardize_graph(nx_graph)
+    return nx_graph

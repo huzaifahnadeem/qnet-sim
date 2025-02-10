@@ -3,6 +3,7 @@ import networkx as nx
 import random
 
 def latitude_longitude_distance(lat1, lat2, lon1, lon2):
+    # calculated the distance in km using the latitudes and longitudes using haversine formula
     # from: https://www.geeksforgeeks.org/program-distance-two-points-earth/
     lat1 = float(lat1)
     lat2 = float(lat2)
