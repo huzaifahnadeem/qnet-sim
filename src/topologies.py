@@ -235,6 +235,9 @@ def network_choice():
     elif network_choice is top.ER_50_005:
         nx_graph = _erdos_renyi_50_005()
     elif network_choice is top.PA_50_2:
+        # it is unclear what 'preferential attachment model' abd 'power graphs' in the quantim overlay paper means. Quantum Overlay people might have used 'nx.barabasi_albert_graph'. At least its somewhere in their code but commented out
+        # look at https://networkx.org/documentation/stable/reference/generators.html
+        # the link has a few graphs generated from some kind of preferential attachment models
         raise NotImplementedError("The graph 'PA(50, 2)' not implemented yet") # TODO
     elif network_choice is top.PA_50_3:
         raise NotImplementedError("The graph 'PA(50, 3)' not implemented yet") # TODO
