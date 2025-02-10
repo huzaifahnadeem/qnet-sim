@@ -187,6 +187,9 @@ def standardize_graph(graph: nx.Graph):
             if k == 'qubit_capacity': # dont remove this because we use this if specified in the topology
                 continue
             del data[k]
+        
+        if 'qubit_capacity' not in list(nodes[n].keys()):
+            data['qubit_capacity'] = globals.args.qubit_capacity
     nx.relabel_nodes(graph, label_mapping, copy=False)
 
     # update edges:
