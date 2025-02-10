@@ -70,6 +70,36 @@ def _teaver_graph_common(data_directory=data_directory_path):
     
     return G
 
+def _latitude_longitude_distance(lat1, lat2, lon1, lon2):
+    # calculated the distance in km using the latitudes and longitudes using haversine formula
+    # from: https://www.geeksforgeeks.org/program-distance-two-points-earth/
+    lat1 = float(lat1)
+    lat2 = float(lat2)
+    lon1 = float(lon1)
+    lon2 = float(lon2)
+
+    from math import radians, cos, sin, asin, sqrt
+
+    # The math module contains a function named
+    # radians which converts from degrees to radians.
+    lon1 = radians(lon1)
+    lon2 = radians(lon2)
+    lat1 = radians(lat1)
+    lat2 = radians(lat2)
+      
+    # Haversine formula 
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+ 
+    c = 2 * asin(sqrt(a)) 
+    
+    # Radius of earth in kilometers. Use 3956 for miles
+    r = 6371
+      
+    # calculate the result
+    return(c * r)
+
 def _att():
     att = _teaver_graph_common(f'{data_directory_path}/ATT/')
     return att
@@ -80,7 +110,6 @@ def _ibm():
 
 def _abilene(): # make_undirected is true by default. if this is true then the this directed graph is converted to an undirected graph. Directed graphs will definitely cause issues without significant changes):
     ### Abilene
-    from src.utils import latitude_longitude_distance
 
     with open(f'{data_directory_path}/Abilene/topo-2003-04-10.txt') as file:
             data = [line.rstrip() for line in file]
@@ -106,7 +135,7 @@ def _abilene(): # make_undirected is true by default. if this is true then the t
         src_lon = abilene.nodes[src_node]['longitude']
         dst_lat = abilene.nodes[dst_node]['latitude']
         dst_lon = abilene.nodes[dst_node]['longitude']
-        length = latitude_longitude_distance(src_lat, dst_lat, src_lon, dst_lon) # calculating length of edge using the nodes' latitute and longitude
+        length = _latitude_longitude_distance(src_lat, dst_lat, src_lon, dst_lon) # calculating length of edge using the nodes' latitute and longitude
         if length == 0:
             length = default_length # sometimes src and dst are at the same lat/long. in those cases still use default length (TODO: does it make sense to have length 0? if so leave as 0)
             # default length is 1. So for lat-lon distance, it would be 1km which seems fair for 2 nodes in the same city
@@ -118,7 +147,6 @@ def _abilene(): # make_undirected is true by default. if this is true then the t
 
 def _surfnet(): # make_undirected is true by default. if this is true then this multigraph is converted to an undirected graph. Directed graphs will definitely cause issues without significant changes):):
     ### SURFnet
-    from src.utils import latitude_longitude_distance
 
     # both gml and graphml are working but graphml seems to provide a slightly easier to read graph (e.g. it has both labels and ids for nodes but in gml only labels are used as ids, etc)
     # surfnet = nx.read_gml(f'{data_directory_path}/SURFnet/Surfnet.gml')
@@ -132,7 +160,7 @@ def _surfnet(): # make_undirected is true by default. if this is true then this 
         u_lon = surfnet.nodes[u]['Longitude']
         v_lat = surfnet.nodes[v]['Latitude']
         v_lon = surfnet.nodes[v]['Longitude']
-        length = latitude_longitude_distance(u_lat, v_lat, u_lon, v_lon) # calculating length of edge using the nodes' latitute and longitude
+        length = _latitude_longitude_distance(u_lat, v_lat, u_lon, v_lon) # calculating length of edge using the nodes' latitute and longitude
         if length == 0:
             length = default_length # sometimes src and dst are at the same lat/long. in those cases still use default length (TODO: does it make sense to have length 0? if so leave as 0)
             # default length is 1. So for lat-lon distance, it would be 1km which seems fair for 2 nodes in the same city
