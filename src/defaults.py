@@ -14,6 +14,7 @@ class Defaults: # The default values to use as arguments
     network_toplogy = NET_TOPOLOGY.GRID_2D
     network_file = '' # '' or None will both return the same error
     er_seed = 0 # the seed to use when generating Erdős–Rényi model graphs (--network=er_50_01 or --network=er_50_005)
+    qubit_capacity = 0 # the default qubit capacity for a node. If set to 0 then degree of node = its qubit capacity
     grid_dim = 4
     algorithm = ALGS.SLMPG
     num_ts = 5

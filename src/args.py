@@ -88,6 +88,7 @@ def get_args():
     parser.add_argument('--length', required=False, default=config.length, type=int, help=f'Used for any edge that does not have its length specified. Unit = km. Default set to {config.length} km.')
     parser.add_argument('--width', required=False, default=config.width, type=int, help=f'Used for any edge that does not have its width specified. Default set to {config.width}.')
     parser.add_argument('--scale_length', required=False, default=config.scale_length, type=float, help=f'All edges\' lengths in the network topology are multiplied by this factor. Default set to {config.scale_length}.')
+    parser.add_argument('--qubit_capacity', required=False, default=config.qubit_capacity, type=int, help=f'This integer will be used to set default qubit capacities for each node if it is not specified in the topology. If set to 0 then degree of node is equal to its qubit capacity. Default set to {config.qubit_capacity}.')
 
     # args specific to SLMP:
     parser.add_argument('--single_entanglement_flow_mode', required=False, action='store_true',  help=f'If this argument used then there is only a single unique s-d pair per timeslot (e.g. to use with single entanglement flow in SLMP). The number of qubits to be sent between src and dst is dependent on the --max_sd and --min_sd arguments.')

@@ -170,7 +170,7 @@ def standardize_graph(graph: nx.Graph):
     This function is supposed to convert the different network topologies into a standard kind of /a graph/s to be used later. 
     This function will return an undirected graph with 'width' and 'length' properties for edges and any other property that may already exist for the edge are removed. 
     If there is no property for 'width' and/or 'length'. The default value is set.
-    For nodes, all properties are deleted. It also relabels nodes if a property 'ID' exists already then that is used for this, otherwise 'name' is used. If neighther are there then it doesnt relabel it. Note that labels are unique and can be used as IDs
+    For nodes, all properties, except 'qubit_capacity', are deleted. It also relabels nodes if a property 'ID' exists already then that is used for this, otherwise 'name' is used. If neighther are there then it doesnt relabel it. Note that labels are unique and can be used as IDs
     '''
     
     nodes = graph.nodes(data=True)
@@ -188,6 +188,8 @@ def standardize_graph(graph: nx.Graph):
             label_mapping[n] = n
         
         for k in list(nodes[n].keys()):
+            if k == 'qubit_capacity': # dont remove this because we use this if specified in the topology
+                continue
             del data[k]
     nx.relabel_nodes(graph, label_mapping, copy=False)
 

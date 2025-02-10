@@ -6,7 +6,6 @@ from netsquid.nodes.node import Node as ns_Node
 from netsquid.nodes.connections import DirectConnection
 from netsquid.components import QuantumChannel, ClassicalChannel, QuantumMemory
 import networkx as nx
-# from netsquid.components import QuantumMemory
 import netsquid as ns
 
 
@@ -29,7 +28,7 @@ class Network(ns_Network):
         super().add_nodes(self._create_nodes())
         
         # Note the difference: 
-        # paper vs here: channels (paper) = DirectConnection (here) (each of which has 2 channels internally). Edges (paper) = A collection of connections here.
+        # paper vs here: channels (qpass paper) = DirectConnection (here) (each of which has 2 channels internally). Edges (paper) = A collection of connections here.
         self._create_and_add_connections()
 
     def node_names(self):
@@ -37,12 +36,13 @@ class Network(ns_Network):
 
     def _create_nodes(self):
         for node_name in self.node_names():
-            # Assuming unique name. might require an ID field if that is not the case.
-            degree = self.graph.degree[node_name]
-            qubit_capacity = degree # By default go with qubit_capacity = degree of node just like SLMP paper. TODO: one should be able to define this in topology for QPASS and probably others
+            if globals.args.qubit_capacity == 0: # if qubit_capacity arg is set to 0 then qubit_capacity for the node = degree of the node (just like SLMP paper)
+                degree = self.graph.degree[node_name]
+                qubit_capacity = degree
+            else:
+                qubit_capacity = self.graph.nodes(data=True)[node_name]['qubit_capacity']
             this_node = Node(
-                name = node_name,
-                # ID = int(node_name[1:]), # not using ID. but might be good to have? currently assume unique names so dont need IDs.
+                name = node_name, # since names are basically just our node labels from the nx.graph, this should be unique and can be used for ID purposes
                 qmemory = QuantumMemory(name=f"{node_name}-qmem", num_positions=qubit_capacity, memory_noise_models=self._gen_q_mem_model()),
             )
             this_node.entity = NodeEntity(node_name, this_node)
@@ -95,12 +95,12 @@ class Network(ns_Network):
                 name = c_conn_label,
                 channel_AtoB = ClassicalChannel(
                                 name = self.gen_label(u_name, v_name, of=label_options.CCHANNEL),
-                                length=length,
+                                length=length, # in km
                                 models=c_channel_model,
                             ),
                 channel_BtoA = ClassicalChannel(
                                 name = self.gen_label(v_name, u_name, of=label_options.CCHANNEL),
-                                length=length,
+                                length=length, # in km
                                 models=c_channel_model,
                             ),
             )
@@ -118,7 +118,7 @@ class Network(ns_Network):
         for channel_num in range(width):
             q_conn_label = self.gen_label(u_name, v_name, of=label_options.QCONNECTION, num=channel_num)
             qmem_name = self.gen_label(u_name, v_name, of=label_options.CONN_QMEM, num=channel_num)
-            u.add_subcomponent(QuantumMemory(qmem_name, num_positions=1, memory_noise_models=self._gen_q_mem_model()))
+            u.add_subcomponent(QuantumMemory(qmem_name, num_positions=1, memory_noise_models=self._gen_q_mem_model())) # kind of like a network interface buffer memory
             v.add_subcomponent(QuantumMemory(qmem_name, num_positions=1, memory_noise_models=self._gen_q_mem_model()))
             
             q_channel_model = self._gen_q_channel_model()
@@ -255,7 +255,7 @@ class Network(ns_Network):
         return q_channel_model
     
     def _gen_c_channel_model(self):
-        # Note: Netsquid only provides delay models for classical channels. It provides a base class for loss models but no ready-made loss model.
+        # Note: Netsquid only provides delay models for classical channels. It provides a base class for loss models but no ready-made loss model. TODO: can consider adding our own loss models (e.g. message gets lost over the channel)
         # Note 2: I figured that values in microsec would be more convenient so arg values are converted into ns since netsquid model params assume nano sec.
         
         ms_to_ns_factor = 1000 # to convert ms to ns, multiple the ms value by 1000.
