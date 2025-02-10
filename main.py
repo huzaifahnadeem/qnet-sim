@@ -1,5 +1,5 @@
 # import globals
-from src.entities import NIS
+from src.entities import NIS, NodeEntity
 import netsquid as ns
 
 def setup():
@@ -27,6 +27,7 @@ def main() -> None:
         n_entity.set_network(nw)
         node_entities.append(n_entity)
 
+    ne: NodeEntity
     for ne in node_entities:
         ne.start() # let all the nodes be ready before the nis starts the first timeslot event.
 

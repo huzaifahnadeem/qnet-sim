@@ -82,7 +82,7 @@ def get_args():
 
     # args for network set up:
     parser.add_argument('--network', required=False, default=config.network_toplogy, type=globals.NET_TOPOLOGY, action=globals.EnumInParamAction, help=f'The network topology to use. Default set to {config.network_toplogy}.')
-    parser.add_argument('--network_file', required=False, default=config.network_file, type=str, help=f'The network topology will be read from this file if --network=file . The file should be a yaml file representing a dict of dict format of networkx. The network is created exactly as in the file i.e. no default lengths/widths with the only exception on --scale_length.')
+    parser.add_argument('--network_file', required=False, default=config.network_file, type=str, help=f'The network topology will be read from this file if --network=file . The file should be a gml file. The network is created exactly as in the file i.e. no default lengths/widths with the only exception on --scale_length.')
     parser.add_argument('--er_seed', required=False, default=config.er_seed, type=int, help=f'The integer to use as the seed value to use when generating Erdős–Rényi model graphs (--network=er_50_01 or --network=er_50_005). Default set to {config.er_seed}.')
     parser.add_argument('--grid_dim', required=False, default=config.grid_dim, type=int, help=f'The dimension of the grid topology if using --network=grid_2d. Default set to {config.grid_dim}')
     parser.add_argument('--length', required=False, default=config.length, type=int, help=f'Used for any edge that does not have its length specified. Unit = km. Default set to {config.length} km.')

@@ -4,7 +4,6 @@ This file contains the functions to import certain network topologies from saved
 from src import globals
 import networkx as nx
 import os 
-import yaml
 
 data_directory_path = f'{os.path.dirname(os.path.realpath(__file__))}/../networks-data'
 default_length = globals.args.length
@@ -17,10 +16,7 @@ def _from_file():
     if file is None or file == '':
         raise ValueError("No network file selected. Need to specify the file to use if --network=file is used.")
 
-    G = None
-    with open(file) as stream:
-        nw_data = yaml.safe_load(stream)
-        G = nx.from_dict_of_dicts(nw_data)
+    G = nx.read_gml(file)
     
     return G
 
