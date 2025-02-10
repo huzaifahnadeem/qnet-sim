@@ -151,13 +151,17 @@ def _surfnet(): # make_undirected is true by default. if this is true then this 
 
 def _erdos_renyi_50_01():
     ### Erdos Renyi G(50, 0.1)
-    g = nx.erdos_renyi_graph(50, 0.1) # TODO: graph seed
+    ### Erdős–Rényi model
+
+    g = nx.erdos_renyi_graph(50, 0.1, seed=globals.args.er_seed)
 
     return g
 
 def _erdos_renyi_50_005():
     ### Erdos Renyi G(50, 0.05)
-    g = nx.erdos_renyi_graph(50, 0.05) # TODO: graph seed
+    ### ### Erdős–Rényi model
+
+    g = nx.erdos_renyi_graph(50, 0.05, seed=globals.args.er_seed)
 
     return g
 
