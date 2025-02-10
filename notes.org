@@ -1,4 +1,4 @@
 * ideas:
 - maybe there should be a ns-network object <-> nx graph objects map
 - i should use nx network and ns network as much as possible. i should add edge/ node properties (e.g. for epr success/ pointer to epr object) instead of having separate variables that i make to keep track of everything
- 
+- utils.py shouldnt exist. all the functions should be somewhere more appropriate instead of being in an essentially misc file 

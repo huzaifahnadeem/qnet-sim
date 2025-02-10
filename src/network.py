@@ -36,9 +36,11 @@ class Network(ns_Network):
 
     def _create_nodes(self):
         for node_name in self.node_names():
-            if globals.args.qubit_capacity == 0: # if qubit_capacity arg is set to 0 then qubit_capacity for the node = degree of the node (just like SLMP paper)
-                degree = self.graph.degree[node_name]
-                qubit_capacity = degree
+            if globals.args.qubit_capacity == 0: # if qubit_capacity arg is set to 0 then qubit_capacity for the node = degree of the node (just like SLMP paper). Although note that edges have widths too so that is also counted (each channel is essentially another edge (with same lengths etc))
+                q_cap = 0
+                for e in self.graph.edges(node_name):
+                    q_cap += self.graph.edges[e]['width'] # if width for all edges is 1, then this will just be the degree of the node
+                qubit_capacity = q_cap
             else:
                 qubit_capacity = self.graph.nodes(data=True)[node_name]['qubit_capacity']
             this_node = Node(

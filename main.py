@@ -1,6 +1,10 @@
 # import globals
-from src.entities import NIS, NodeEntity
+from src.entities import NIS
 import netsquid as ns
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.entities import NodeEntity
 
 def setup():
     from src import setup
@@ -22,12 +26,12 @@ def main() -> None:
     # set the nis entity and node entites properties for the node entities:
     node_entities = []
     for n_name in node_names:
-        n_entity = nw.get_node(n_name).entity
+        n_entity: 'NodeEntity' = nw.get_node(n_name).entity
         n_entity.set_nis_entity(nis)
         n_entity.set_network(nw)
         node_entities.append(n_entity)
 
-    ne: NodeEntity
+    ne: 'NodeEntity'
     for ne in node_entities:
         ne.start() # let all the nodes be ready before the nis starts the first timeslot event.
 

@@ -6,7 +6,6 @@ import pydynaa
 from src import globals
 import random 
 import networkx as nx
-from queue import PriorityQueue
 import netsquid as ns
 import copy
 # from functools import reduce
@@ -15,6 +14,11 @@ from math import sqrt
 from src import utils
 from src import data_collector
 from src import traffic_matrix
+from .RoutingAlgorithms import slmp_global, slmp_local, qpass, qcast
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.network import Node, Network
 
 # TODO Probably a good idea to use protocol class for the algorithms maybe
 
@@ -34,19 +38,67 @@ class NodeEntity(pydynaa.Entity):
     e2e_ready_evtype = pydynaa.EventType("E2E EBIT READY", "E2E ebit is ready. can teleport now")
     
     def __init__(self, name, node):
-        self.name = name
-        self.node = node
-        self.network = None
+        self.name: str = name
+        self.node: 'Node' = node
+        self.network: 'Network' = None
         self.nis: NIS = None
-        self.curr_ts = None
+        self.curr_ts: int = None
         self.sd_pairs = []
         self.curr_role = None
         self.k_hop_neighbours = [] # nodes that are <= k hops away
         self.imm_neighbours = [] # immediate neighbours (share an edge)
         self.connections = {}
         self.events_msg_passing = {} # for passing parameters etc between a function and the handler function if needed (for the same entity not across)
-        self.swapped_nodes = [] # to keep track in SLMP local
-        self.e2e_paths_sofar = [] # for slmp local
+        '''self.swapped_nodes = [] # to keep track in SLMP local'''
+        '''self.e2e_paths_sofar = [] # for slmp local'''
+
+    def start(self):
+        self._setup()
+        self._wait(
+                event_type = NIS.new_ts_evtype,
+                entity = self.nis,
+                handler = pydynaa.EventHandler(self._new_ts),
+            )
+
+    def _setup(self):
+        # this is to set up anything that could not be set up with the constructor (e.g. connections variable)
+        self._set_connections()
+
+    def _new_ts(self, _):
+        self._cleanup()
+        self.curr_ts = self.nis.curr_ts
+        
+        self._p1()
+
+        # start P2 once P1 is done:
+        self._wait_once(
+            event_type = NodeEntity.p1_done_evtype,
+            entity = self,
+            handler = pydynaa.EventHandler(self._p2),
+        )
+
+        self._wait_once(
+            event_type = NodeEntity.p2_done_evtype,
+            entity = self,
+            handler = pydynaa.EventHandler(self._p3),
+        )
+
+        self._wait_once(
+            event_type = NodeEntity.p3_done_evtype,
+            entity = self,
+            handler = pydynaa.EventHandler(self._p4),
+        )
+
+    def _cleanup(self):
+        # This is to clear up any variable states at the start of a new timeslot
+        self.node.qmemory.discard(self.node.qmemory.used_positions, check_positions=False) # discard all qubits in memory from previous ts
+        self.curr_qubit_channel_assignment = {} # reset qubit-channel assignments
+        self.major_paths = None
+        self.link_state = {}
+        self.neighbours_link_state = {}
+        self.events_msg_passing = {}
+        self.swapped_nodes = []
+        self.e2e_paths_sofar = []
 
     def set_nis_entity(self, nis):
         self.nis = nis
@@ -119,54 +171,6 @@ class NodeEntity(pydynaa.Entity):
         else:
             raise ValueError(f"Node {v} is not an immediate neighbour of {self.name} so this qubit cannot be sent.")
 
-    def _setup(self):
-        # this is to set up anything that could not be set up with the constructor (e.g. connections variable)
-        self._set_connections()
-
-    def start(self):
-        self._setup()
-        self._wait(
-                event_type = NIS.new_ts_evtype,
-                entity = self.nis,
-                handler = pydynaa.EventHandler(self._new_ts),
-            )
-
-    def _cleanup(self):
-        # This is to clear up any variable states at the start of a new timeslot
-        self.node.qmemory.discard(self.node.qmemory.used_positions, check_positions=False) # discard all qubits in memory from previous ts
-        self.curr_qubit_channel_assignment = {} # reset qubit-channel assignments
-        self.major_paths = None
-        self.link_state = {}
-        self.neighbours_link_state = {}
-        self.events_msg_passing = {}
-        self.swapped_nodes = []
-        self.e2e_paths_sofar = []
-
-    def _new_ts(self, _):
-        self._cleanup()
-        self.curr_ts = self.nis.curr_ts
-        
-        self._p1()
-
-        # start P2 once P1 is done:
-        self._wait_once(
-            event_type = NodeEntity.p1_done_evtype,
-            entity = self,
-            handler = pydynaa.EventHandler(self._p2),
-        )
-
-        self._wait_once(
-            event_type = NodeEntity.p2_done_evtype,
-            entity = self,
-            handler = pydynaa.EventHandler(self._p3),
-        )
-
-        self._wait_once(
-            event_type = NodeEntity.p3_done_evtype,
-            entity = self,
-            handler = pydynaa.EventHandler(self._p4),
-        )
-    
     def _rcv_ebit(self, src_name, conn_num):
         this_event = pydynaa.EventType("EBIT_SENT", "...")
         # schedule an event after the interval of timeout. if qubit not present in the corresponding connection's qmem by then, then that means we did not receive that qubit.
@@ -297,7 +301,7 @@ class NodeEntity(pydynaa.Entity):
         if globals.args.two_sided_epr not in [True, False]: # TODO: add a third option where the connection itself generates the epr pairs (like in netsquid tutorial/examples)
             raise NotImplementedError("connection-generated epr pairs not implemented yet")
         
-        # TODO: implement nc functionality
+        # TODO: implement nc functionality for QPASS
         # nc = globals.args.p2_nc
         for qubit_index in self.curr_qubit_channel_assignment.keys():
             to_node, channel_num = self.curr_qubit_channel_assignment[qubit_index]
@@ -376,16 +380,26 @@ class NodeEntity(pydynaa.Entity):
             nonlocal self
             # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p2 start.")
 
-            if globals.args.alg in [globals.ALGS.SLMPG, globals.ALGS.SLMPL]:
-                pass # SLMP tries local links on all edges so no processing here
-            elif globals.args.alg is globals.ALGS.QPASS:
+            if globals.args.alg is globals.ALGS.SLMPG:
+                self.major_paths = None # Not applicable # do i actually need this? not sure why i put it here in the first place TODO
+                slmp_global.p2(self)
+
+            if globals.args.alg is globals.ALGS.SLMPL:
+                self.major_paths = None # Not applicable # do i actually need this? not sure why i put it here in the first place TODO
+                slmp_local.p2(self)
+
+            # QPASS ans QCAST has some preprocessing before p2 (or start of p2? confirm)
+            # SLMP l/g dont have anything like this so we just called their p2 function
+            '''
+            if globals.args.alg is globals.ALGS.QPASS:
                 # TODO: could add a processing time delay here since the qpass p2 alg is supposed to run on each node. Im just running it on the NIS at the beginning of each ts so avoid running the exact same thing multiple times.
                 assign_channels, major_paths = self._qpass_p2_alg()
                 recovery_paths = None # p2 also needs to return this. used in p4
             elif globals.args.alg is globals.ALGS.QCAST:
                 assign_channels, major_paths, recovery_paths = self._qcast_p2_alg()
+            '''
             
-
+            '''
             if globals.args.alg in [globals.ALGS.QPASS, globals.ALGS.QCAST]: # TODO: this if statement doesnt have to be here. The following part should be common to all 4 algs. Right now the input/output to p2 algs needs to be adjusted slightly. fix this
                 self.major_paths = major_paths
                 self.curr_qubit_channel_assignment = {} # key = memory index for the qubit. value = num corresponding to channels (starts at 0)
@@ -409,16 +423,7 @@ class NodeEntity(pydynaa.Entity):
                 for n, c in qubit_and_channel_assignmets:
                     qubit_mem_index += 1
                     self.curr_qubit_channel_assignment[qubit_mem_index] = (n, c)
-            
-            if globals.args.alg in [globals.ALGS.SLMPG, globals.ALGS.SLMPL]:
-                self.major_paths = None # Not applicable
-                self.curr_qubit_channel_assignment = {} # key = memory index for the qubit. value = num corresponding to channels (starts at 0)
-                # in slmp, all nodes attempt to establish links with each of their neighbours:
-                qubit_mem_index = -1
-                for neighbour in self.imm_neighbours:
-                    qubit_mem_index += 1
-                    self.curr_qubit_channel_assignment[qubit_mem_index] = (neighbour.name, 0) # slmp does have have explicitly defined "widths". so just channel num 0
-                    # TODO: support width in SLMP. count any parallel edges in the graph (when reading input graph -- not here) and consider that width. then just try to establish link as many times as the width.
+            '''
 
             self._establish_links()
         
@@ -433,9 +438,12 @@ class NodeEntity(pydynaa.Entity):
         def start_p3(_):
             nonlocal self
             # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p3 start.")
-            self._gen_final_link_state() # see which ebits to use. discard one of the ebits where both side were success
             
-            if (globals.args.alg is globals.ALGS.SLMPG) or (globals.args.alg is globals.ALGS.QPASS): # in SLMPl only the two nodes across the link know about that link status. so no sharing.
+            if (globals.args.alg is globals.ALGS.SLMPG):
+                slmp_global.p3(self)
+
+            if (globals.args.alg is globals.ALGS.QPASS): # this is basically the same code as SLMPG, might want to combine the code
+                self._gen_final_link_state() # see which ebits to use. discard one of the ebits where both side were success
 
                 # TODO: maybe. Add an option to send through the internet/NIS (larger delays, uncertain delays etc)
                 # To send directly through neighbours, create a message and send it to next neighbour in the shortest path who forwards it further. All nodes know the topology. Also, might want to add that drop any message from an earlier ts.
@@ -452,9 +460,6 @@ class NodeEntity(pydynaa.Entity):
                 # In SLMPl, only the two nodes across an edge know about the status of the local link. so nothing to do here (final link state already generated above)
                 pass
 
-            # elif globals.args.alg is globals.ALGS.QPASS:
-            #     pass # TODO: will probably be mostly the same as SLMPG. use that if statement or write new code if changes needed.
-
             elif globals.args.alg is globals.ALGS.QCAST:
                 pass # TODO: will probably be mostly the same as SLMPG. use that if statement or write new code if changes needed.
         
@@ -469,119 +474,16 @@ class NodeEntity(pydynaa.Entity):
             nonlocal self
             # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: p4 start.")
             if globals.args.alg is globals.ALGS.SLMPG:
-                links_graph = self._gen_links_graph(self.network.graph, self.neighbours_link_state)
-                sd_pairs = self.sd_pairs
-                # print(f"sd pairs: {sd_pairs}")
-                paths = utils.slmpg_find_paths(links_graph, sd_pairs)
-                role_for_path = self._role(paths)
-                ROLES = globals.ROLES
-                for i in range(len(paths)):
-                    role = role_for_path[i]
-                    if role in [ROLES.REPEATER, ROLES.DESTINATION]:
-                        prev_node_name = paths[i][paths[i].index(self.name) - 1]
-                        src_name = paths[i][0]
-                        dst_name = paths[i][-1]
-                        serving_pair = (src_name, dst_name)
-                        if prev_node_name == src_name: # then this node is the first repeater on the path
-                            # this node is the first repeater on the path
-                            if role is not ROLES.DESTINATION: # if this node is dest and prev node on path is source then already have e2e ebits. handled that later
-                                self._swap(serving_pair, paths[i])
-                            else: # case when src and dst are neighbours 
-                                self._send_e2e_ready_message(serving_pair, paths[i])
+                slmp_global.p4(self)
 
-                    else:
-                        # nothing to do for this path role is ROLES.NO_TASK
-                        pass
+            if globals.args.alg is globals.ALGS.SLMPL:
+                slmp_local.p4(self)
 
-            elif globals.args.alg is globals.ALGS.SLMPL:
-                sd_pairs = self.sd_pairs
-                # print(f"sd pairs: {sd_pairs}")
-
-                for pair_num in range((len(sd_pairs))):
-                    src = sd_pairs[pair_num][0]
-                    dst = sd_pairs[pair_num][1]
-                    
-                    if self.name not in [src, dst]: # src and dst dont do these swaps
-                        linked_n_nodes = set() # neighbour nodes that you have links with
-                        for link in self.link_state['final']:
-                            node1, node2, _ = link
-                            linked_n_nodes.add(node1)
-                            linked_n_nodes.add(node2)
-                        linked_n_nodes = list(linked_n_nodes)
-                        linked_n_nodes.remove(self.name) # the way ive done it, the list would also contain self.name. remove it.
-                        
-                        # lists to store distance of a linked neighbour to src/dst:
-                        d_src = []
-                        d_dst = []
-
-                        for n in linked_n_nodes:
-                            d_src.append((n, self._slmpl_calc_dist(n, src)))
-                            d_dst.append((n, self._slmpl_calc_dist(n, dst)))
-                        
-                        d_src.sort(key=lambda elem: elem[1]) # in the paper, if two neighbours have same d_src and d_dst then an unbiased coin toss is used to select one. That aspect is missing here since same values are sorted in some other order. TODO: take a look later
-                        d_dst.sort(key=lambda elem: elem[1])
-
-                        # local strategy part:
-                        if len(linked_n_nodes) <= 1: # if you dont have at least 2 linked neighbours then you cant swap.
-                            pass # nothing can be done
-                        else:
-                            # find the pair of best 2 neighbours (closest to src and dst). and swap them. move on to next 2 and so on. stop if <= 1 neighbours left
-                            while True: # TODO: if you have multiple links with the same neighbour then this is probably not as straightforward.
-                                try:
-                                    closest_to_src, d0_src = d_src[0]
-                                    closest_to_dst, d0_dst = d_dst[0]
-
-                                    if closest_to_src == closest_to_dst: # then look at next best d_src and d_dst such that the chosen 2 nodes' sum of d_src and d_dst is minimum among the possibilities
-                                        _, d1_src = d_src[1]
-                                        _, d1_dst = d_dst[1]
-                                        # closest_to_dst, _ = d_dst.pop(1)
-                                        if (d0_src + d1_dst) < (d0_dst + d1_src):
-                                            chosen_src_side_idx = 0
-                                            chosen_dst_side_idx = 1
-                                        else:
-                                            chosen_src_side_idx = 1
-                                            chosen_dst_side_idx = 0
-                                    else:
-                                        chosen_src_side_idx = 0
-                                        chosen_dst_side_idx = 0
-
-                                    # pop from the lists the nodes that are selected
-                                    closest_to_src, _ = d_src.pop(chosen_src_side_idx)
-                                    closest_to_dst, _ = d_dst.pop(chosen_dst_side_idx)
-
-                                    # remove from the other list too
-                                    d_src = [x for x in d_src if x[0] != closest_to_dst]
-                                    d_dst = [x for x in d_dst if x[0] != closest_to_src]
-                                    
-                                    # print(f" sim_time = {ns.sim_time():.1f}: {self.name} is swapping for [{closest_to_src}, {self.name}, {closest_to_dst}]")
-                                    serving_pair = (src, dst)
-                                    path = [closest_to_src, self.name, closest_to_dst]
-                                    self._swap(serving_pair, path)
-                                except IndexError:
-                                    break # we get there when are no more pairs to be made
-
-            elif globals.args.alg is globals.ALGS.QPASS:
-                # QPASS P4 alg:
-                # Inputs: S-D pairs from P1, Major Path list from P2, Recovery Path list from P2, k-hop link states of this node from P3
-                # 
-                # for path in major_paths:
-                #   h = len(path) - 1 # num of hops in the path
-                #   k = globals.args.p3_hop
-                #   num_of_segments = utils.ceildiv(h, k+1)
-                #   len_of_a_segment = k+1
-                #   segments = calc_segments(path)
-                #   for s in segments:
-                #       for node in s:
-                #           if node != self.name:
-                #               continue
-                #           seg_start_node = s[0]
-                #           seg_end_node = s[-1]
-                #           connect(seg_start_node, seg_end_node, s, link_state)
-                #
-                #
-                pass
-            elif globals.args.alg is globals.ALGS.QCAST:
-                pass
+            if globals.args.alg is globals.ALGS.QPASS:
+                qpass.p4()
+                
+            if globals.args.alg is globals.ALGS.QCAST:
+                qcast.p4()
 
         start_p4(None)
 
@@ -793,14 +695,14 @@ class NodeEntity(pydynaa.Entity):
         # generates an nx graph comprising of successful links (edges over which epr pairs have been shared successfully)
         link_states = neighbours_link_states
         link_states[self.name] = self.link_state
-        links_graph = nx.MultiGraph()
+        links_graph = nx.Graph()
         already_added = []
         for n in link_states.keys():
             edges_list = link_states[n]['final']
             for e in edges_list:
                 if e not in already_added:
                     already_added.append(e)
-                    links_graph.add_edge(e[0], e[1], channel_num=e[2], length=og_graph[e[0]][e[1]]['length']) # TODO: if we change everything to multigraph then this might have to be adjusted
+                    links_graph.add_edge(e[0], e[1], channel_num=e[2], length=og_graph[e[0]][e[1]]['length'])
         return links_graph
 
     def _set_event_handler_params(self, ev_type, ev_src, params):
@@ -891,15 +793,15 @@ class NIS(pydynaa.Entity): # The Network Information Server
 
     def __init__(self, nw):
         self.network = nw
-        self.traffic_matrix = None
-        self.curr_ts = 0
-        self.curr_sd_pairs = None
+        self.traffic_matrix: list = None
+        self.curr_ts: int = 0
+        self.curr_sd_pairs: list = None
         self.total_num_ts = globals.args.num_ts
-        self.offline_paths = {} # candidate paths for QPASS -- generated by yen's alg at the very start before ts=1
+        '''self.offline_paths = {} # candidate paths for QPASS -- generated by yen's alg at the very start before ts=1'''
         self._epr_track = {}
         self.data_collector = data_collector.DataCollector()
 
-        tm = None
+        tm: list = None
         if globals.args.traffic_matrix is globals.TRAFFIC_MATRIX_CHOICES.random:
             tm = traffic_matrix.random_traffic_matrix(self.network)
         elif globals.args.traffic_matrix is globals.TRAFFIC_MATRIX_CHOICES.file:
@@ -908,17 +810,22 @@ class NIS(pydynaa.Entity): # The Network Information Server
             raise NotImplementedError("Other traffic matrix options to be implemented")
         self.set_traffic_matrix(tm)
 
+        # run any pre ts=1 tasks that the algorithms may need to run
         if globals.args.alg is globals.ALGS.SLMPG:
-            pass
-        elif globals.args.alg is globals.ALGS.SLMPL:
-            pass
-        elif globals.args.alg is globals.ALGS.QPASS:
-            self._run_yens_alg()
-        elif globals.args.alg is globals.ALGS.QCAST:
-            raise NotImplementedError("QCAST not implemented yet.")
+            slmp_global.pre_ts_1_tasks()
+            '''
+            elif globals.args.alg is globals.ALGS.SLMPL:
+                slmp_local.pre_ts_1_tasks()
+            elif globals.args.alg is globals.ALGS.QPASS:
+                qpass.pre_ts_1_tasks(self)
+            elif globals.args.alg is globals.ALGS.QCAST:
+                qcast.pre_ts_1_tasks()
+                raise NotImplementedError("QCAST not implemented yet.")
+            '''
         else:
             raise NotImplementedError("Unknown algorithm selected.")
 
+        # set up the event to trigger self._new_ts fn
         self._wait(
                 event_type = NIS._init_new_ts_evtype, # Only events of the given event_type will match the filter.
                 entity = self, # Only events from this entity will match the filter
@@ -939,10 +846,12 @@ class NIS(pydynaa.Entity): # The Network Information Server
         self.curr_ts += 1
         # print(f"time slot {self.curr_ts}")
         self.curr_sd_pairs = self._this_ts_sd_pairs()
-        utils._slmpg_paths_found_already = {}
+        
+        if globals.args.alg is globals.ALGS.SLMPG:
+            slmp_global.paths_found_already = {}
         
         if globals.args.alg is globals.ALGS.QPASS:
-            self._run_qpass_p2_alg()
+            qpass._run_qpass_p2_alg(self)
         
         self._schedule_now(NIS.new_ts_evtype)  # node entities start their time slots with this event
 
@@ -952,190 +861,7 @@ class NIS(pydynaa.Entity): # The Network Information Server
 
     def _this_ts_sd_pairs(self):
         return self.traffic_matrix[self.curr_ts - 1] # -1 because index 0 stores sd pairs for ts=1 and so on.
-    
-    def _run_yens_alg(self):
-        if globals.args.qpass_yen_file is not None:
-            import pickle
-            yenfile = open(globals.args.qpass_yen_file, 'rb') # binary mode
-            self.offline_paths = pickle.load(yenfile)
-            yenfile.close()
-            return
-        
-        # nx.shortest_simple_paths function uses yen's algorithm as per the the reference on networkx' website: https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.simple_paths.shortest_simple_paths.html
-        # This sub function is also adapted from the same source:
-        
-        from itertools import islice
-        def k_shortest_paths(G, source, target, k, weight=None):
-            return list(islice(nx.shortest_simple_paths(G, source, target, weight=weight), k))
-
-        # need three positional params for these fns (to be used as 'weight' param when calling the fn above). params = start node, end node, dict containing properties of the edge
-        def ext(u, v, _): # This one is the best in theory but would take too long to run in practice
-            # use equation in paper's section 4.1
-            raise NotImplementedError("EXT metric not implemented yet") # TODO
-        
-        def sum_dist(): # this is a little different than the other routing metric functions. we wont be passing this function, we only need the string it returns
-            return 'length'
-
-        def creation_rate(u, v, _): # best one after EXT. the paper uses this since its better than sumdist and bottleneckcap and has a decent performance
-            # computed as sum(1/p_i) where p_i is the success rate of any channel on the i-th hop of the path. Presumably, all channels of an edge have same probability of success value.
-            # Note that the paper says that CR takes into account the path width. p_i is the success on ANY channel for that edge.
-            raise NotImplementedError("CR metric not implemented yet") # TODO
-
-        def bottleneck_cap(u, v, _):
-            # bottleneck_cap metric is just "-W" i.e. -1*W. use CR to break ties for paths with the same width.
-            raise NotImplementedError("BotCap metric not implemented yet") # TODO
-        
-        # TODO: the paper also have a "multimetric" option. look into that.
-
-        k = globals.args.yen_n # TODO: in the paper it is mentioned "N will grow by 50% percent in the next offline phase if the paths happen happen to be not enough for a pair."
-
-        if globals.args.yen_metric is globals.YEN_METRICS.EXT:
-            weight_fn = ext
-        elif globals.args.yen_metric is globals.YEN_METRICS.SUMDIST:
-            weight_fn = sum_dist() # note the parenthesis. for this one we are calling the function and using the returned string and not the function itself.
-        elif globals.args.yen_metric is globals.YEN_METRICS.CR:
-            weight_fn = creation_rate
-        elif globals.args.yen_metric is globals.YEN_METRICS.BOTCAP:
-            weight_fn = bottleneck_cap
-        elif globals.args.yen_metric is globals.YEN_METRICS.HOPCOUNT: # the paper doesnt consider this but added this for the sake of completion. SLMP implicitly chooses to use this.
-            weight_fn = None
-
-        for n1 in self.network.node_names():
-            for n2 in self.network.node_names():
-                if n1 == n2:
-                    continue
-                self.offline_paths[(n1, n2)] = k_shortest_paths(self.network.graph, source=n1, target=n2, k=k, weight=weight_fn)
-
-        # # Intentionally commented this part. But may uncomment to save results into a pkl file for later use:
-        # import pickle
-        # data = self.offline_paths
-        # pklfile_name = '/home/hun13/qnet-sim/tmp-misc-random/yenfile_5x5grid_ndefault.pkl'
-        # pklfile = open(pklfile_name, 'ab') # binary mode
-        # pickle.dump(data, pklfile)                    
-        # pklfile.close()
-        # print(f'yen file created at: {pklfile_name}')
-
-    def _run_qpass_p2_alg(self):
-        # writing the following function to match the alg1 in the paper as closely as possible
-        def qpass_p2_alg(G, O, P):
-            # inputs: G = <V, E, C> (graph: V vertices, E edges, C capacity), O = list of S-D pairs, P = mapping from any S-D pair to its offline paths
-            # outputs: <L_C, L_P>; L_C = list of channels to assigned qubits, L_P = ordered list of selected paths
-            def construct_node_capacity_map(G):
-                T_Q = {}
-                for n_name in G.node_names():
-                    node = G.get_node(G.get_node(n_name))
-                    T_Q[n_name] = copy.deepcopy(node.qmemory.num_positions)
-                return T_Q
-            
-            def edges_of_path(p):
-                edge_path = []
-                for i in range(1, len(p)):
-                    edge_path.append((p[i-1], p[i]))
-                return edge_path
-            
-            # note that the width of a path is defined as being equal to the width of the edge with the smallest width.
-            def Width(p, T_Q, L_P=None): # capital W in name to match the fn name in the paper
-                nonlocal G
-                def w_after_LP(L_P, u, v, width_original):
-                    edge_width_used = 0
-                    for path_w, p in L_P:
-                        for lu, lv in edges_of_path(p):
-                            if (u == lu) and (v == lv):
-                                edge_width_used += path_w
-                    return width_original - edge_width_used
-
-
-                w = float("inf")
-                for u, v in edges_of_path(p):
-                    width_original = G.graph[u][v]["width"]
-                    width_after_removing_LP = float("inf") if L_P is None else w_after_LP(L_P, u, v, width_original)
-                    width_effective = min([width_original, T_Q[u], T_Q[v], width_after_removing_LP])
-                    if width_effective < w:
-                        w = width_effective
-
-                return w
-
-            def get_routing_metric_val(p, w):
-                # w will be used by some of the metrics
-                m = None
-                nonlocal G
-                # TODO: these functions are defined in yen's alg as well. make and use a single copy of these functions
-                if globals.args.yen_metric is globals.YEN_METRICS.EXT:
-                    raise NotImplementedError("EXT metric not implemented yet") # TODO
-                elif globals.args.yen_metric is globals.YEN_METRICS.SUMDIST:
-                    m = 0
-                    for u, v in edges_of_path(p):
-                        m += G.graph[u][v]["length"]
-                elif globals.args.yen_metric is globals.YEN_METRICS.CR:
-                    raise NotImplementedError("CR metric not implemented yet") # TODO
-                elif globals.args.yen_metric is globals.YEN_METRICS.BOTCAP:
-                    raise NotImplementedError("BOTCAP metric not implemented yet") # TODO
-                elif globals.args.yen_metric is globals.YEN_METRICS.HOPCOUNT:
-                    m = 0
-                    for _ in edges_of_path(p):
-                        m += 1
-                
-                return m
-            
-            def priority_queue_as_list(q):
-                q_list = []
-                while q.empty() == False:
-                    q_list.append(q.get())
-                return q_list
-
-            L_C = []                                                                    # line 1 of alg1 in paper
-            L_P = []
-            T_Q = {}
-            T_Q = construct_node_capacity_map(G)
-            W = {}                                                                      # line 5
-            q = PriorityQueue()
-            for o in O:
-                for p in P[o]:
-                    W[tuple(p)] = Width(p, T_Q)
-                    m = get_routing_metric_val(p, W[tuple(p)])                                 # line 10
-                    q.put((m, p))
-            while not q.empty():
-                _, p = q.get()
-                if Width(p, T_Q, L_P) < W[tuple(p)]: # The width of p has changed
-                    W[tuple(p)] = Width(p, T_Q, L_P); q.put((get_routing_metric_val(p, W[tuple(p)]), p))   # line 15
-                    continue
-                if Width(p, T_Q, L_P) == 0: # Even the best path is unsatisfiable
-                    q.put((get_routing_metric_val(p, W[tuple(p)]), p)); break
-                L_P.append((W[tuple(p)], p))
-                for n1, n2 in edges_of_path(p):                                         # line 20
-                    T_Q[n1] = T_Q[n1] - W[tuple(p)]
-                    T_Q[n2] = T_Q[n2] - W[tuple(p)]
-                    L_C.append((n1, n2, W[tuple(p)])) # need to bind "W[p]" many channels between n1 and n2
-            # partial = L_P + priority_queue_as_list(q)
-            partial = priority_queue_as_list(q)
-            for _, p in partial:                                                           # line 25
-                for n1, n2 in edges_of_path(p):
-                    if Width([n1, n2], T_Q, L_P) > 0: # only on available edges
-                        T_Q[n1] = T_Q[n1] - 1
-                        T_Q[n2] = T_Q[n2] - 1
-                        L_C.append((n1, n2, 1))
-            return L_C, L_P
-        
-        nw = self.network
-        # self.curr_sd_pairs is list of (s, d, state)
-        sd_pairs_list = [(pair[0], pair[1]) for pair in self.curr_sd_pairs]
-        sd_pair_to_offline_path_map = self.offline_paths # dict keyed by (s, d). val = list of lists with each list being a path (path is list of nodes in the path includes src and dest)
-        
-        L_C, L_P = qpass_p2_alg(
-            G = nw,
-            O = sd_pairs_list,
-            P = sd_pair_to_offline_path_map,
-        )
-
-        major_paths = L_P # ordered list of selected paths
-        assign_channels = {} # list of channels to assign qubits
-        for n1, n2, num_c in L_C:
-            if (n1, n2) not in assign_channels.keys():
-                assign_channels[(n1, n2)] = 0
-            assign_channels[(n1, n2)] += num_c
-
-        self.qpass_p2_result = assign_channels, major_paths
-
+  
     def save_exp_results(self):
         self.data_collector.save_results()
 
