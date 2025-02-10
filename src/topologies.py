@@ -233,7 +233,7 @@ def network_choice():
     elif network_choice is top.ER_50_01:
         nx_graph = _erdos_renyi_50_01()
     elif network_choice is top.ER_50_005:
-        nx_graph = _erdos_renyi_50_005
+        nx_graph = _erdos_renyi_50_005()
     elif network_choice is top.PA_50_2:
         raise NotImplementedError("The graph 'PA(50, 2)' not implemented yet") # TODO
     elif network_choice is top.PA_50_3:
