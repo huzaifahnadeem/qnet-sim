@@ -1,4 +1,5 @@
 * ideas:
 - maybe there should be a ns-network object <-> nx graph objects map
 - i should use nx network and ns network as much as possible. i should add edge/ node properties (e.g. for epr success/ pointer to epr object) instead of having separate variables that i make to keep track of everything
-- utils.py shouldnt exist. all the functions should be somewhere more appropriate instead of being in an essentially misc file 
+- utils.py shouldnt exist. all the functions should be somewhere more appropriate instead of being in an essentially misc file
+- maybe some auto option for slmpl p3 to be 0 ms long since it is not a part of the algo. currently you will have to set the right time parameter to make sure fidelity etc isnt lost for no reason

@@ -2,6 +2,8 @@
 TODO: add papers ref here
 """
 
+import networkx as nx
+from math import sqrt
 from . import _slmp_common
 
 from typing import TYPE_CHECKING
@@ -12,6 +14,60 @@ def pre_ts_1_tasks():
     ''' Any tasks that need to be done before the first time slot go here
     '''
     pass # nothing has to be done before ts 1
+
+
+def calc_dist(node_entity: 'NodeEntity', node1, node2, method="L2"):
+    # method = "L1" # TODO: parameterize method (L1 norm/ L2 norm/ something else)
+    # method = "L2"
+    method = "shortest_path_length" 
+    # TODO: other than `method = "shortest_path_length"`` this is hardcodded for 4x4 grid right now
+    def delta_x(n1, n2):
+        num1 = int(n1[1:])
+        num2 = int(n2[1:])
+
+        counter = 1
+        for n in [num1, num2]:
+            if n not in [1, 2, 3, 4]:
+                if n in [13, 14, 15, 16]:
+                    n -= 4
+                if n in [9, 10, 11, 12]:
+                    n -= 4
+                if n in [5, 6, 7, 8]:
+                    n -= 4
+            if counter == 1:
+                num1 = n 
+            else:
+                num2 = n 
+            counter += 1
+        return abs(num1 - num2)
+
+    def delta_y(n1, n2):
+        num1 = int(n1[1:])
+        num2 = int(n2[1:])
+
+        counter = 1
+        for n in [num1, num2]:
+            if n not in [1, 5, 9, 13]:
+                if n in [4, 8, 12, 16]:
+                    n -= 1
+                if n in [3, 7, 11, 15]:
+                    n -= 1
+                if n in [2, 6, 10, 14]:
+                    n -= 1
+            if counter == 1:
+                num1 = n 
+            else:
+                num2 = n 
+            counter += 1
+        return int(abs((num1 - num2)/4))
+
+    if method == 'L2':
+        return sqrt((delta_x(node1, node2)**2) + (delta_y(node1, node2)**2))
+    if method == 'L1':
+        return delta_x(node1, node2) + delta_y(node1, node2)
+    if method == "shortest_path_length": # not in the paper. just adding it because why not
+        return nx.shortest_path_length(node_entity.network.graph, source=node1, target=node2)
+
 
 def p1():
     pass
@@ -32,20 +88,21 @@ def p4(this_node_entity: 'NodeEntity'):
         
         if this_node_entity.name not in [src, dst]: # src and dst dont do these swaps
             linked_n_nodes = set() # neighbour nodes that you have links with
-            for link in this_node_entity.link_state['final']:
-                node1, node2, _ = link
-                linked_n_nodes.add(node1)
-                linked_n_nodes.add(node2)
+            for link in this_node_entity.link_state:
+                node1, node2 = link
+                neighbour_node = node1 if node1 != this_node_entity.name else node2
+                for channel_num in this_node_entity.link_state[link].keys():
+                    if this_node_entity.link_state[link][channel_num] == True:
+                        linked_n_nodes.add((neighbour_node, channel_num))
             linked_n_nodes = list(linked_n_nodes)
-            linked_n_nodes.remove(this_node_entity.name) # the way ive done it, the list would also contain this_node_entity.name. remove it.
             
             # lists to store distance of a linked neighbour to src/dst:
             d_src = []
             d_dst = []
 
-            for n in linked_n_nodes:
-                d_src.append((n, this_node_entity._slmpl_calc_dist(n, src)))
-                d_dst.append((n, this_node_entity._slmpl_calc_dist(n, dst)))
+            for n, _ in linked_n_nodes:
+                d_src.append((n, calc_dist(this_node_entity, n, src)))
+                d_dst.append((n, calc_dist(this_node_entity, n, dst)))
             
             d_src.sort(key=lambda elem: elem[1]) # in the paper, if two neighbours have same d_src and d_dst then an unbiased coin toss is used to select one. That aspect is missing here since same values are sorted in some other order. TODO: take a look later
             d_dst.sort(key=lambda elem: elem[1])

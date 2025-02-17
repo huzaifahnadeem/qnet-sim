@@ -714,58 +714,6 @@ class NodeEntity(pydynaa.Entity):
     def _get_event_handler_params(self, ev_type, ev_src):
         return self.events_msg_passing.pop((ev_type, ev_src), None)
 
-    def _slmpl_calc_dist(self, node1, node2, method="L2"):
-        # method = "L1" # TODO: parameterize method (L1 norm/ L2 norm/ something else)
-        # method = "L2"
-        method = "shortest_path_length" 
-        # TODO: this is hardcodded for 4x4 grid right now
-        def delta_x(n1, n2):
-            num1 = int(n1[1:])
-            num2 = int(n2[1:])
-
-            counter = 1
-            for n in [num1, num2]:
-                if n not in [1, 2, 3, 4]:
-                    if n in [13, 14, 15, 16]:
-                        n -= 4
-                    if n in [9, 10, 11, 12]:
-                        n -= 4
-                    if n in [5, 6, 7, 8]:
-                        n -= 4
-                if counter == 1:
-                    num1 = n 
-                else:
-                    num2 = n 
-                counter += 1
-            return abs(num1 - num2)
-
-        def delta_y(n1, n2):
-            num1 = int(n1[1:])
-            num2 = int(n2[1:])
-
-            counter = 1
-            for n in [num1, num2]:
-                if n not in [1, 5, 9, 13]:
-                    if n in [4, 8, 12, 16]:
-                        n -= 1
-                    if n in [3, 7, 11, 15]:
-                        n -= 1
-                    if n in [2, 6, 10, 14]:
-                        n -= 1
-                if counter == 1:
-                    num1 = n 
-                else:
-                    num2 = n 
-                counter += 1
-            return int(abs((num1 - num2)/4))
-
-        if method == 'L2':
-            return sqrt((delta_x(node1, node2)**2) + (delta_y(node1, node2)**2))
-        if method == 'L1':
-            return delta_x(node1, node2) + delta_y(node1, node2)
-        if method == "shortest_path_length": # not in the paper. just adding it because why not
-            return nx.shortest_path_length(self.network.graph, source=node1, target=node2)
-
     def _send_e2e_ready_message(self, serving_pair, path):
         # this is sent to whoever is at the start of the path. this lets that node know that it shares an e2e ebit with dst. if that node is src, it will teleport the data qubit. otherwise do nothing.
         send_to = path[0]
@@ -813,9 +761,9 @@ class NIS(pydynaa.Entity): # The Network Information Server
         # run any pre ts=1 tasks that the algorithms may need to run
         if globals.args.alg is globals.ALGS.SLMPG:
             slmp_global.pre_ts_1_tasks()
+        elif globals.args.alg is globals.ALGS.SLMPL:
+            slmp_local.pre_ts_1_tasks()
             '''
-            elif globals.args.alg is globals.ALGS.SLMPL:
-                slmp_local.pre_ts_1_tasks()
             elif globals.args.alg is globals.ALGS.QPASS:
                 qpass.pre_ts_1_tasks(self)
             elif globals.args.alg is globals.ALGS.QCAST:
