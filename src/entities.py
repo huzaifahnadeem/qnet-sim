@@ -576,13 +576,13 @@ class NodeEntity(pydynaa.Entity):
         ROLES = globals.ROLES
         pathwise_roles = [] # will store this nodes' role for each path
         for path in paths:
-            if self.name not in path:
+            if self.name not in path.nodes:
                 pathwise_roles.append(ROLES.NO_TASK)
             else:
-                if path[0] == self.name:
+                if path.nodes[0] == self.name:
                     # is source
                     pathwise_roles.append(ROLES.SOURCE)
-                elif path[-1] == self.name:
+                elif path.nodes[-1] == self.name:
                     pathwise_roles.append(ROLES.DESTINATION)
                 else:
                     pathwise_roles.append(ROLES.REPEATER)
