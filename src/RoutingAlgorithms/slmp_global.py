@@ -15,25 +15,30 @@ if TYPE_CHECKING:
 paths_found_already = {}
 
 # This function is here and is not a property of entities (like it was previously) because of the fact that nx.shortest_path() returns any of the shortest paths and when this function was running seperately on each node entity, the results were inconsistent across nodes. So now the first time it is called, it caches the result and uses that later on.
-def find_paths(links_graph, sd_pairs): # TODO: i think this is quite inefficient.
+def find_paths(links_graph: nx.MultiGraph, sd_pairs):
     # use cached result if it exists
     if tuple(sd_pairs) in paths_found_already.keys():
         return paths_found_already[tuple(sd_pairs)]
     
     G = copy.deepcopy(links_graph)
     paths = []
-
-    def edges_of_path(p):
-        edge_path = []
-        for i in range(1, len(p)):
-            edge_path.append((p[i-1], p[i]))
-        return edge_path
     
     for s, d in sd_pairs:
         try:
             p = nx.shortest_path(G, source=s, target=d, weight='length')
-            paths.append(list(p))
-            G.remove_edges_from(edges_of_path(p))
+            # nx only returns the nodes in the node -- no matter if the graph is nx.Graph or ns.MultiGraph
+            # but since for this codebase, we assume that any parallel edges are not separate edges per se but rather just a channel in the connection (and hence equal in length and all properties)
+            # so we can just pick an arbitrary edge between the two given nodes, remove that from the graph and move from there.
+            path_edges = [(p[i-1], p[i]) for i in range(1, len(p))]
+            path_edges_w_channel_nums = []
+            path_edges_w_nx_edge_keys = []
+            for u, v in path_edges:
+                e_data = G.get_edge_data(u, v)
+                path_edges_w_channel_nums.append((u, v, e_data[list(e_data.keys())[0]]['channel_num']))   # arbitrarily pick first key (index 0) -- lengths are all the same so arbitrary is ok
+                path_edges_w_nx_edge_keys.append((u, v, list(e_data.keys())[0]))                          # arbitrarily pick first key (index 0) -- lengths are all the same so arbitrary is ok
+            path_obj = _slmp_common.RoutingPath(path_edges_w_channel_nums)
+            paths.append(path_obj)
+            G.remove_edges_from(path_edges_w_nx_edge_keys)
         except nx.NetworkXNoPath: # no path possible
             pass
         except nx.NodeNotFound: # if src/dst is not able to make link to any node

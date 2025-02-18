@@ -691,11 +691,11 @@ class NodeEntity(pydynaa.Entity):
             y_dist=utils.grid_y_dist(serving_pair[0], serving_pair[1]),
         )
 
-    def _gen_links_graph(self, og_graph, neighbours_link_states: list):
+    def _gen_links_graph(self, og_graph, neighbours_link_states: list) -> nx.MultiGraph:
         # generates an nx graph comprising of successful links (edges over which epr pairs have been shared successfully)
         link_states = neighbours_link_states
         link_states[self.name] = self.link_state
-        links_graph = nx.Graph()
+        links_graph = nx.MultiGraph()
         already_added = []
         for n in link_states.keys():
             edges_list = link_states[n]['final']
