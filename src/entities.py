@@ -19,6 +19,7 @@ from .RoutingAlgorithms import slmp_global, slmp_local, qpass, qcast
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.network import Node, Network
+    from .RoutingAlgorithms._slmp_common import RoutingPath
 
 # TODO Probably a good idea to use protocol class for the algorithms maybe
 
@@ -49,7 +50,7 @@ class NodeEntity(pydynaa.Entity):
         self.imm_neighbours = [] # immediate neighbours (share an edge)
         self.connections = {}
         self.events_msg_passing = {} # for passing parameters etc between a function and the handler function if needed (for the same entity not across)
-        '''self.swapped_nodes = [] # to keep track in SLMP local'''
+        self.swapped_nodes = []
         '''self.e2e_paths_sofar = [] # for slmp local'''
 
     def start(self):
@@ -500,12 +501,7 @@ class NodeEntity(pydynaa.Entity):
         src_name, dst_name = serving_pair
 
         if m0 is None and m1 is None: # is both m0 and m1 are None then the swap operation was a failure. so dont do anything
-            return            
-
-        if self.name == dst_name: # case when this is dest node
-            if self.name != path[-1]:
-                path.append(self.name)
-            self.e2e_paths_sofar.append(path) # not used. remove TODO
+            return
 
         if data_qubit_state is None: # regular case
             if self._apply_corrections_and_swap_next(serving_pair, path, sender_name, m0, m1):
@@ -513,7 +509,8 @@ class NodeEntity(pydynaa.Entity):
             else:
                 # if above function returns false then that means corrections couldnt be applied as the epr pair has already been swapped. so forward the message packet to the node that now holds this epr pair
                 next_node_name = None
-                for swapped_pair in self.swapped_nodes:
+                for prev_swap_node, next_swap_node, prev_swap_node_channel_num, next_swap_node_channel_num in self.swapped_nodes:
+                    swapped_pair = (prev_swap_node, next_swap_node)
                     if swapped_pair[0] == sender_name:
                         next_node_name = swapped_pair[1]
                         break
@@ -521,8 +518,6 @@ class NodeEntity(pydynaa.Entity):
                         next_node_name = swapped_pair[0]
                         break
                 
-                if self.name != path[-1]:
-                    path.append(self.name)
                 self.send_message(
                     next_node_name, 
                     message=self._gen_message_packet(
@@ -539,19 +534,17 @@ class NodeEntity(pydynaa.Entity):
             # case when received corrections of the data qubit/teleported qubit
             self._receive_teleported_qubit(m0, m1, data_qubit_state, path, serving_pair)
 
-    def _get_ebit_shared_with(self, node_name):
+    def _get_ebit_shared_with(self, node_name, channel_num):
         # returns the ebit and also returns the ebit's index in main qmem or conn mem. also returns whether this self.node's ebit is used or not
         ebit = None
 
         using_my_ebit = None
         for link in self.link_state['final']:
-            if link[0] == node_name:
+            if (link[0] == node_name) and (link[2] == channel_num):
                 using_my_ebit = False
-                channel_num = link[2]
                 break
-            elif link[1] == node_name:
+            elif (link[1] == node_name) and (link[2] == channel_num):
                 using_my_ebit = True
-                channel_num = link[2]
                 break
         
         qmem = None
@@ -589,11 +582,15 @@ class NodeEntity(pydynaa.Entity):
         
         return pathwise_roles
 
-    def _swap(self, serving, path):
-        prev_node_name = path[path.index(self.name) - 1]
-        next_node_name = path[path.index(self.name) + 1]
-        src_side_ebit, _, _ = self._get_ebit_shared_with(prev_node_name)
-        dst_side_ebit, _, _ = self._get_ebit_shared_with(next_node_name)
+    def _swap(self, serving, path: 'RoutingPath'):
+        prev_node_name = path.nodes[path.nodes.index(self.name) - 1]
+        next_node_name = path.nodes[path.nodes.index(self.name) + 1]
+
+        channel_num_src_side = path.channel_num_between(prev_node_name, self.name)
+        channel_num_dst_side = path.channel_num_between(self.name, next_node_name)
+
+        src_side_ebit, _, _ = self._get_ebit_shared_with(prev_node_name, channel_num_src_side)
+        dst_side_ebit, _, _ = self._get_ebit_shared_with(next_node_name, channel_num_dst_side)
         
         if src_side_ebit is None:
             return
@@ -616,9 +613,9 @@ class NodeEntity(pydynaa.Entity):
                     corrections=(m0, m1)
                     ),
             ) # the node receiving this message will run self._store_corrections()
-        self.swapped_nodes.append((prev_node_name, next_node_name))
+        self.swapped_nodes.append((prev_node_name, next_node_name, channel_num_src_side, channel_num_dst_side))
     
-    def _teleport_qubit(self, serving_pair, path):
+    def _teleport_qubit(self, serving_pair, path: 'RoutingPath'):
         src_name, dst_name = serving_pair
         if src_name != self.name:
             # if i am not the source then dont do anything
@@ -630,7 +627,7 @@ class NodeEntity(pydynaa.Entity):
             # then you have the e2e path ready but no qubit to send
             return
 
-        e2e_ebit, _, _ = self._get_ebit_shared_with(path[1])
+        e2e_ebit, _, _ = self._get_ebit_shared_with(path.nodes[1], path.channel_num_between(self.name, path.nodes[1])) # the ebit that i used to share with my immediate next neighbor on the path (i am the first one on the path (index = 0)) should be now the e2e ebit
         m0, m1 = quantum.prepare_corrections(data_qubit, e2e_ebit)
         self.send_message(
             dst_name, 
@@ -646,10 +643,11 @@ class NodeEntity(pydynaa.Entity):
             send_directly=False, # src and dest may or may not be neighbours. so letting the send_message figure out the next hop itself
             )
     
-    def _apply_corrections_and_swap_next(self, serving_pair, path, sender_name, m0, m1):
+    def _apply_corrections_and_swap_next(self, serving_pair: tuple, path: 'RoutingPath', sender_name: str, m0, m1):
         src_name, dst_name = serving_pair
         is_dest = True if self.name == dst_name else False
-        ebit, index, using_mine = self._get_ebit_shared_with(sender_name)
+        chann_num = path.channel_num_between(sender_name, self.name)
+        ebit, index, using_mine = self._get_ebit_shared_with(sender_name, chann_num)
         if ebit is None:
             # this can happen in SLMP local if this swap has already been done
             # upon return, the node will forward corrections to the node that now share the epr pair with the sender
@@ -660,7 +658,7 @@ class NodeEntity(pydynaa.Entity):
         if using_mine: # then put into main qmem
             qmem = self.node.qmemory
         else:   # put in conn qmem
-            conn_qmem_label = self.network.gen_label(sender_name, self.name, of=globals.CONN_CHANN_LABELS_FN_PARAM.CONN_QMEM, num=0) # TODO: channel num is hardcodded
+            conn_qmem_label = self.network.gen_label(sender_name, self.name, of=globals.CONN_CHANN_LABELS_FN_PARAM.CONN_QMEM, num=chann_num)
             qmem = self.node.subcomponents[conn_qmem_label]
         qmem.put(teleported_qubit, positions=index)
 
@@ -670,13 +668,13 @@ class NodeEntity(pydynaa.Entity):
                 self._swap(serving_pair, path)
 
         if is_dest: # destination node has the extra step to let source node know that they share an e2e ebit. so schedule a e2e_ready_evtype event
-            if path[0] == src_name and path[-1] == dst_name: # send e2e ready message if e2e path ready (useful check for slmpl)
+            if path.nodes[0] == src_name and path.nodes[-1] == dst_name: # send e2e ready message if e2e path ready (useful check for slmpl)
                 self._send_e2e_ready_message(serving_pair, path)
 
         return True
 
-    def _receive_teleported_qubit(self, m0, m1, data_qubit_state, path, serving_pair):
-        e2e_ebit, _, _ = self._get_ebit_shared_with(path[-2])
+    def _receive_teleported_qubit(self, m0, m1, data_qubit_state, path: 'RoutingPath', serving_pair):
+        e2e_ebit, _, _ = self._get_ebit_shared_with(path.nodes[-2], path.channel_num_between(path.nodes[-2], self.name)) # the ebit that i used to share with my immediate prev neighbor on the path (i am the last on the path (idx = -1)) should be now the e2e ebit
         teleported_qubit, fidelity = quantum.apply_corrections(e2e_ebit, (m0, m1), original_state_idx=data_qubit_state)
         # print(f" sim_time = {ns.sim_time():.1f}: {self.name}: received the data qubit with fidelity {fidelity:.3f} over path {path}")
         self.nis.data_collector.add_data(
@@ -685,7 +683,7 @@ class NodeEntity(pydynaa.Entity):
             dst_name=serving_pair[1],
             path=path,
             fidelity=float(f"{fidelity:.3f}"),
-            num_eprs_used=len(path)-1,
+            num_eprs_used=len(path.nodes)-1,
             num_eprs_created=self.nis.epr_total_created(self.curr_ts),
             x_dist=utils.grid_x_dist(serving_pair[0], serving_pair[1]),
             y_dist=utils.grid_y_dist(serving_pair[0], serving_pair[1]),
@@ -716,7 +714,7 @@ class NodeEntity(pydynaa.Entity):
 
     def _send_e2e_ready_message(self, serving_pair, path):
         # this is sent to whoever is at the start of the path. this lets that node know that it shares an e2e ebit with dst. if that node is src, it will teleport the data qubit. otherwise do nothing.
-        send_to = path[0]
+        send_to = path.nodes[0]
         self.send_message(
             send_to, 
             message=self._gen_message_packet(

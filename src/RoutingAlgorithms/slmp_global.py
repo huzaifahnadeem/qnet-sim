@@ -82,7 +82,7 @@ def p4(this_node_entity: 'NodeEntity'):
     for i in range(len(paths)):
         role = role_for_path[i]
         if role in [ROLES.REPEATER, ROLES.DESTINATION]:
-            prev_node_name = paths[i][paths[i].nodes.index(this_node_entity.name) - 1]
+            prev_node_name = paths[i].nodes[paths[i].nodes.index(this_node_entity.name) - 1]
             src_name = paths[i].nodes[0]
             dst_name = paths[i].nodes[-1]
             serving_pair = (src_name, dst_name)

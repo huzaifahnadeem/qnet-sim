@@ -24,7 +24,7 @@ class DataCollector:
         self._data_table['time_slot'].append(ts)
         self._data_table['src_name'].append(src_name)
         self._data_table['dst_name'].append(dst_name)
-        self._data_table['path'].append(path)
+        self._data_table['path'].append(path.edges)
         self._data_table['fidelity'].append(fidelity)
         self._data_table['num_eprs_used'].append(num_eprs_used)
         self._data_table['num_eprs_created'].append(num_eprs_created)

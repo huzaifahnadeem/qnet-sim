@@ -10,6 +10,9 @@ class RoutingPath:
         self.edges = edge_path
         self.nodes = self._create_node_path()
     
+    def channel_num_between(self, n1, n2):
+        return [self.edges[i][2] for i in range(len(self.edges)) if ((self.edges[i][0] == n1) and self.edges[i][1] == n2)][0]
+    
     def _create_node_path(self) -> list:
         nodes_from_e_path = []
         # loop over the edges list
