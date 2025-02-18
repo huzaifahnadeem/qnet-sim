@@ -539,7 +539,8 @@ class NodeEntity(pydynaa.Entity):
         ebit = None
 
         using_my_ebit = None
-        for link in self.link_state['final']:
+        link_state_dict = self.link_state['final'] if globals.args.alg == globals.ALGS.SLMPG else self.link_state # TODO: this should be consistent across all algs
+        for link in link_state_dict:
             if (link[0] == node_name) and (link[2] == channel_num):
                 using_my_ebit = False
                 break

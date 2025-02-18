@@ -4,7 +4,9 @@ TODO: add papers ref here
 
 import networkx as nx
 from math import sqrt
+import random
 from . import _slmp_common
+from .. import globals
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -16,10 +18,10 @@ def pre_ts_1_tasks():
     pass # nothing has to be done before ts 1
 
 
-def calc_dist(node_entity: 'NodeEntity', node1, node2, method="L2"):
+def calc_dist(node_entity: 'NodeEntity', node1, node2, method="shortest_path_length"):
     # method = "L1" # TODO: parameterize method (L1 norm/ L2 norm/ something else)
     # method = "L2"
-    method = "shortest_path_length" 
+    # method = "shortest_path_length" 
     # TODO: other than `method = "shortest_path_length"`` this is hardcodded for 4x4 grid right now
     def delta_x(n1, n2):
         num1 = int(n1[1:])
@@ -79,6 +81,7 @@ def p3():
     pass
 
 def p4(this_node_entity: 'NodeEntity'):
+    random.seed(globals.args.seed)
     sd_pairs = this_node_entity.sd_pairs
     # print(f"sd pairs: {sd_pairs}")
 
@@ -100,11 +103,14 @@ def p4(this_node_entity: 'NodeEntity'):
             d_src = []
             d_dst = []
 
-            for n, _ in linked_n_nodes:
-                d_src.append((n, calc_dist(this_node_entity, n, src)))
-                d_dst.append((n, calc_dist(this_node_entity, n, dst)))
+            for n, chann_num in linked_n_nodes:
+                d_src.append(((n, chann_num), calc_dist(this_node_entity, n, src)))
+                d_dst.append(((n, chann_num), calc_dist(this_node_entity, n, dst)))
             
-            d_src.sort(key=lambda elem: elem[1]) # in the paper, if two neighbours have same d_src and d_dst then an unbiased coin toss is used to select one. That aspect is missing here since same values are sorted in some other order. TODO: take a look later
+            # in the paper, if two neighbours have same d_src and d_dst then one of them is chosen randomly. To add this aspect, we just shuffle the list so any nodes of equal length can be in any order and the sorting alg will order them arbitrarily.
+            random.shuffle(d_src)
+            random.shuffle(d_dst)
+            d_src.sort(key=lambda elem: elem[1]) 
             d_dst.sort(key=lambda elem: elem[1])
 
             # local strategy part:
@@ -114,8 +120,8 @@ def p4(this_node_entity: 'NodeEntity'):
                 # find the pair of best 2 neighbours (closest to src and dst). and swap them. move on to next 2 and so on. stop if <= 1 neighbours left
                 while True: # TODO: if you have multiple links with the same neighbour then this is probably not as straightforward.
                     try:
-                        closest_to_src, d0_src = d_src[0]
-                        closest_to_dst, d0_dst = d_dst[0]
+                        (closest_to_src, _), d0_src = d_src[0]
+                        (closest_to_dst, _), d0_dst = d_dst[0]
 
                         if closest_to_src == closest_to_dst: # then look at next best d_src and d_dst such that the chosen 2 nodes' sum of d_src and d_dst is minimum among the possibilities
                             _, d1_src = d_src[1]
@@ -132,16 +138,18 @@ def p4(this_node_entity: 'NodeEntity'):
                             chosen_dst_side_idx = 0
 
                         # pop from the lists the nodes that are selected
-                        closest_to_src, _ = d_src.pop(chosen_src_side_idx)
-                        closest_to_dst, _ = d_dst.pop(chosen_dst_side_idx)
+                        (closest_to_src, closest_to_src_chann_num), _ = d_src.pop(chosen_src_side_idx)
+                        (closest_to_dst, closest_to_dst_chann_num), _ = d_dst.pop(chosen_dst_side_idx)
 
                         # remove from the other list too
-                        d_src = [x for x in d_src if x[0] != closest_to_dst]
-                        d_dst = [x for x in d_dst if x[0] != closest_to_src]
+                        d_src = [x for x in d_src if x[0][0] != closest_to_dst]
+                        d_dst = [x for x in d_dst if x[0][0] != closest_to_src]
                         
                         # print(f" sim_time = {ns.sim_time():.1f}: {this_node_entity.name} is swapping for [{closest_to_src}, {this_node_entity.name}, {closest_to_dst}]")
                         serving_pair = (src, dst)
-                        path = [closest_to_src, this_node_entity.name, closest_to_dst]
+                        # path = [closest_to_src, this_node_entity.name, closest_to_dst]
+                        edge_path = [(closest_to_src, this_node_entity.name, closest_to_src_chann_num), (this_node_entity.name, closest_to_dst, closest_to_dst_chann_num)]
+                        path = _slmp_common.RoutingPath(edge_path)
                         this_node_entity._swap(serving_pair, path)
                     except IndexError:
                         break # we get there when are no more pairs to be made
